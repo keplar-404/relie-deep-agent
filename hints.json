@@ -1,0 +1,4 @@
+[
+  { "type": "create", "kind": "column", "entity": ["public", "users", "projectIds"] },
+  { "type": "create", "kind": "column", "entity": ["public", "users", "createdAt"] }
+]

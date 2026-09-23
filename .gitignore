@@ -1,0 +1,39 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# env files (NEVER COMMIT)
+.env
+.env*.local
+.env.development
+.env.test
+.env.production
+
+# typescript
+*.tsbuildinfo
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+bun.lockb
+
+# misc
+.DS_Store
+*.pem
+
+# agent transcripts
+conversation_history
+
+# ide & local agent configs
+.agents
+.claude
+.commandcode
