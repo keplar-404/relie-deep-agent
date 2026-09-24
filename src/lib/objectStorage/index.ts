@@ -10,6 +10,7 @@ import { env } from "@/lib/utils/env";
  */
 export const s3 = new S3Client({
   forcePathStyle: true,
+  requestChecksumCalculation: "WHEN_REQUIRED",
 });
 
 export const BUCKET = env.S3_BUCKET || env.NEON_STORAGE_BUCKET || "project-assets";

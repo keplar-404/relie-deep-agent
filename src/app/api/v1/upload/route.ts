@@ -1,85 +1,39 @@
 import { NextRequest } from "next/server";
-import { currentUser } from "@/lib/auth";
-import { uploadAsset } from "@/lib/objectStorage";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { s3, BUCKET } from "@/lib/objectStorage";
+import { env } from "@/lib/utils/env";
 
 /**
- * POST /api/v1/upload
- *
- * Dedicated API route to upload files directly to Neon Object Storage.
- *
- * Request format: `multipart/form-data`
- * Fields:
- * - `file` (required): File to upload
- * - `folder` (optional): Folder prefix in bucket (defaults to "uploads")
- *
- * Returns:
- * {
- *   success: true,
- *   url: string,
- *   key: string,
- *   name: string,
- *   size: number,
- *   type: string
- * }
+ * Upload object to Neon Object Storage.
+ * Follows official Neon documentation: https://neon.com/docs/storage/objects#upload
  */
 export async function POST(req: NextRequest) {
-  // 1. Authenticate user
-  const user = await currentUser();
-  if (!user) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
-    // 2. Parse multipart form data
     const formData = await req.formData();
-    const file = formData.get("file");
-    const folderInput = formData.get("folder");
+    const file = formData.get("file") as File | null;
 
-    if (!file || !(file instanceof File)) {
-      return Response.json(
-        { error: "No file provided. Ensure the form field is named 'file'." },
-        { status: 400 }
-      );
+    if (!file) {
+      return Response.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // 3. Sanitize folder and filename
-    const folder =
-      typeof folderInput === "string" && folderInput.trim()
-        ? folderInput.trim().replace(/^\/+|\/+$/g, "")
-        : "uploads";
+    const buffer = Buffer.from(await file.arrayBuffer());
 
-    const sanitizedName = file.name
-      .replace(/[^a-zA-Z0-9._-]/g, "_")
-      .toLowerCase();
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: BUCKET,
+        Key: file.name,
+        Body: buffer,
+        ContentType: file.type || "application/octet-stream",
+      })
+    );
 
-    // Unique key with timestamp & random ID to avoid collisions
-    const key = `${folder}/${Date.now()}-${crypto.randomUUID().slice(0, 8)}-${sanitizedName}`;
+    const endpoint = (env.AWS_ENDPOINT_URL_S3 || "").replace(/\/+$/, "");
+    const url = `${endpoint}/${BUCKET}/${file.name}`;
 
-    // 4. Convert File to in-memory Buffer
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const contentType = file.type || "application/octet-stream";
-
-    // 5. Upload directly to Neon Object Storage
-    const url = await uploadAsset(key, buffer, contentType);
-
-    return Response.json({
-      success: true,
-      url,
-      key,
-      name: file.name,
-      size: file.size,
-      type: contentType,
-    });
+    return Response.json({ url, key: file.name });
   } catch (error) {
-    console.error("[POST /api/v1/upload error]:", error);
     return Response.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to upload file to object storage.",
-      },
+      { error: error instanceof Error ? error.message : "Upload failed" },
       { status: 500 }
     );
   }
