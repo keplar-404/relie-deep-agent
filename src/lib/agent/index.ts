@@ -9,6 +9,7 @@ import {
   modelCallLimitMiddleware,
 } from "langchain";
 import { fsTools } from "./tools/fsOperations";
+import { assetExtractionTool } from "./tools/assetExtraction";
 import systemPromt from "./prompts/systemPromt";
 import { pgPool } from "@/lib/db/drizzle";
 
@@ -47,7 +48,7 @@ export const agent = createDeepAgent({
      * 1. In-Memory QuickJS Code Interpreter
      * - WHERE IT WORKS: Injects an isolated JavaScript sandbox tool (`execute_code`) into the agent's tool loop.
      * - WHEN IT WORKS:  Triggers when the agent needs to test pure JS logic, compute responsive layout math,
-     *                   format JSON, or validate Shopify Storefront GraphQL query variables in-memory
+     *                   format JSON, or validate API query variables in-memory
      *                   without touching the Daytona filesystem or running shell commands.
      */
     createCodeInterpreterMiddleware(),
@@ -68,8 +69,8 @@ export const agent = createDeepAgent({
     /**
      * 3. Token Pruning & Stale File Cleaner (Context Editing)
      * - WHERE IT WORKS: Runs before each model call (`beforeModel` hook) by inspecting historical `ToolMessage` tokens.
-     * - WHEN IT WORKS:  Triggers whenever total conversation tokens exceed 40,000. In storefront coding, the agent
-     *                   frequently reads multiple large files (`Header.tsx`, `ProductGrid.tsx`, `CartDrawer.tsx`).
+     * - WHEN IT WORKS:  Triggers whenever total conversation tokens exceed 40,000. In complex web coding, the agent
+     *                   frequently reads multiple large files (`Header.tsx`, `FeatureGrid.tsx`, `Sidebar.tsx`).
      *                   This replaces older raw file read outputs with `[cleared]` while preserving the 3 most
      *                   recent tool results. The agent still remembers *that* it read the file (call signature intact),
      *                   drastically reducing prompt tokens and eliminating context degradation.
@@ -88,9 +89,9 @@ export const agent = createDeepAgent({
     /**
      * 4. Multi-Component Task Planner (To-Do List)
      * - WHERE IT WORKS: Injects the `write_todos` tool and task-decomposition instructions into the agent prompt.
-     * - WHEN IT WORKS:  Triggers on complex multi-step coding prompts (e.g., "Build an entire luxury jewelry storefront").
+     * - WHEN IT WORKS:  Triggers on complex multi-step coding prompts (e.g., "Build an entire modern SaaS web application").
      *                   The agent creates a visible checklist, marks tasks (`in_progress`, `completed`), and stays
-     *                   focused on building components sequentially (Navbar → Hero → ProductGrid → Cart) without
+     *                   focused on building components sequentially (Navbar → Hero → Features → Footer) without
      *                   stopping halfway or forgetting remaining items.
      */
     todoListMiddleware(),
@@ -109,5 +110,5 @@ export const agent = createDeepAgent({
       keep: { messages: 20 },
     }),
   ],
-  tools: [...fsTools],
+  tools: [...fsTools, assetExtractionTool],
 });
