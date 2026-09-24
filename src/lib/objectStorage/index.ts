@@ -12,7 +12,7 @@ export const s3 = new S3Client({
   forcePathStyle: true,
 });
 
-export const BUCKET = env.NEON_STORAGE_BUCKET;
+export const BUCKET = env.S3_BUCKET || env.NEON_STORAGE_BUCKET || "project-assets";
 
 /**
  * Uploads an asset buffer to Neon Object Storage using PutObjectCommand.
