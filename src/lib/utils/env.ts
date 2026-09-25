@@ -17,6 +17,7 @@ const envSchema = z.object({
   AWS_REGION: z.string().default("us-east-2"),
   S3_BUCKET: z.string().optional(),
   NEON_STORAGE_BUCKET: z.string().default("project-assets"),
+  TYPESAFE: z.string().optional(),
 });
 
 
@@ -30,4 +31,6 @@ if (!parsed.success) {
   );
 }
 
-export const env = parsed.data;
+export const env = {
+  ...parsed.data
+};

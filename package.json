@@ -25,6 +25,7 @@
     "@langchain/openrouter": "^0.4.13",
     "@langchain/quickjs": "^0.6.4",
     "@neondatabase/serverless": "^1.1.0",
+    "@typesafe-ai/sdk": "^0.6.0",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.3.0",
     "deepagents": "^1.14.0",
