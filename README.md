@@ -513,13 +513,66 @@ In addition, Neon Postgres hosts the tables managed by LangGraph's `@langchain/l
 
 ---
 
-### 11. Progressive Skills System
-- **Where:** `src/lib/agent/skills/` and `.agents/skills/`.
-- **Skills Included:**
-  1. **`codeoptimizer` / `ponytail`** (`SKILL.md`): Enforces minimalist engineering — YAGNI, standard library first, zero unrequested bloat, native HTML5/CSS primitives over extra packages.
-  2. **`design-motion-principles`** (`SKILL.md`): Enforces the Frequency Gate, duration budgets (180ms sweet spot), `prefers-reduced-motion` compliance, and anti-AI-slop checks. Includes reference libraries from Emil Kowalski, Jakub Krehel, and Jhey Tompkins.
-  3. **`typesafe-ai`** (`SKILL.md`): System One decision primitives (`Choice`, `Noul`, `Score`) for sub-50ms deterministic routing, surgical code slot insertion, compiler error triage, and confidence-gated escalation.
-- **Progressive Disclosure:** Only skill names and descriptions are exposed in the system prompt at startup. Full workflows and reference files are read on-demand only when a relevant design, motion, or optimization task is requested. Write access to skill definitions is denied (`mode: "deny"`).
+### 11. 3-Tier Progressive Skills System (AgentSkills.io Spec)
+- **Where:** `src/lib/agent/skills/` (Active Parent Routers) and `.agents/skills/` (Preserved Library Warehouse).
+- **Architecture & Context Protection:** Instead of loading 95+ flat skill summaries into the system prompt at startup (which consumes ~5,000 tokens on *every* turn and causes choice paralysis), Relie AI adheres strictly to the official [AgentSkills.io Specification](https://agentskills.io) using **3-Tier Progressive Disclosure**:
+  1. **Level 1 — Startup Metadata (~300 tokens):** The agent runtime (`deepagents`) loads only the `name` and `description` of the **7 Core Parent Domains** on startup, achieving a **94% token reduction**.
+  2. **Level 2 — Parent Activation (< 2,500 tokens):** When a user prompt triggers a domain, the parent `SKILL.md` router is loaded to determine the exact specialized sub-skill needed.
+  3. **Level 3 — On-Demand Reference Loading:** Specific guides, workflows, and rule sets are read from `references/` on-demand only when executing that specific sub-task, keeping the context window light and focused.
+  4. **Filesystem Write Guard:** All skill definitions in `/src/lib/agent/skills/**` are write-protected (`mode: "deny"`) to prevent accidental modification during code generation runs.
+
+```
+src/lib/agent/skills/
+├── frontend-design-taste/       <-- Parent: One-shot website creation & aesthetics
+│   ├── SKILL.md                 <-- Short router & index (Startup: ~35 tokens)
+│   └── references/              <-- Loaded ONLY on-demand:
+│       ├── design-taste-frontend.md, gpt-taste.md, high-end-visual-design.md
+│       ├── stitch-design-taste.md, minimalist-ui.md, industrial-brutalist-ui.md
+│       └── image-to-code.md, imagegen-frontend-web.md, imagegen-frontend-mobile.md
+│
+├── ui-craft-impeccable/         <-- Parent: Design consistency & component polish
+│   ├── SKILL.md                 <-- Short router & index (Startup: ~30 tokens)
+│   └── references/
+│       ├── impeccable.md, design-motion-principles.md, redesign-existing-projects.md
+│       └── brandkit.md, make-bot-ui.md
+│
+├── frontend-code-craft/         <-- Parent: Production TypeScript & component architecture
+│   ├── SKILL.md                 <-- Short router & index (Startup: ~35 tokens)
+│   └── references/
+│       ├── typescript-best-practices.md, surgical-patch.md, safe-refactor.md
+│       ├── tdd.md, lean-build.md, codebase-design.md, domain-modeling.md
+│       ├── architect.md, implement.md, implement-spec.md, prototype.md
+│       └── resolving-merge-conflicts.md, setup-ts-deep-modules.md, migrate-to-shoehorn.md
+│
+├── ponytail-engineering/        <-- Parent: YAGNI & zero-dependency mindset
+│   ├── SKILL.md                 <-- Short router & index (Startup: ~35 tokens)
+│   └── references/
+│       ├── ponytail.md, ponytail-review.md, ponytail-audit.md
+│
+├── frontend-quality-review/     <-- Parent: Verification, security & bug diagnosis
+│   ├── SKILL.md                 <-- Short router & index (Startup: ~35 tokens)
+│   └── references/
+│       ├── vibe-security.md, code-review.md, caveman-review.md, verify-and-stop.md
+│       ├── investigate-first.md, diagnosing-bugs.md, blast-radius.md, interrogate.md
+│       └── create-verification-skill.md, maintain-verification-skill.md, setup-pre-commit.md
+│
+├── agent-communication/         <-- Parent: Dialogue, anti-slop & requirement planning
+│   ├── SKILL.md                 <-- Short router & index (Startup: ~35 tokens)
+│   └── references/
+│       ├── caveman.md, caveman-commit.md, caveman-compress.md, caveman-help.md
+│       ├── bro.md, no-ai-slop.md, unslop.md, poteto-mode.md, grill-me.md, grilling.md
+│       ├── grill-with-docs.md, loop-me.md, to-spec.md, to-tickets.md, to-questionnaire.md
+│       └── how.md, why.md, wait-what.md, teach.md, research.md, pr.md, retro.md...
+│
+├── architectural-principles/    <-- Parent: 23 distilled mental models
+│   ├── SKILL.md                 <-- Short router & index (Startup: ~35 tokens)
+│   └── references/
+│       ├── core-principles.md (10 core simplicity & laziness heuristics)
+│       ├── architecture-principles.md (6 domain modeling & boundary guards)
+│       └── execution-principles.md (7 verification, proof & root-cause rules)
+│
+└── codeoptimizer/               <-- Standalone code optimization helper
+```
 
 ---
 
@@ -609,3 +662,17 @@ Visit [http://localhost:3000](http://localhost:3000) to access the Relie AI Web 
 | `db:studio` | `drizzle-kit studio` | Launch local visual Drizzle Studio database explorer |
 | `db:reset` | `bun run db:drop && bun run db:push` | Drop all application tables and re-apply schema |
 | `db:drop` | `bun ./scripts/drop-tables.js` | Drop all database tables |
+
+---
+
+## Acknowledgments & Skill Credits
+
+All individual skills, architectural heuristics, and design frameworks integrated into Relie AI's skill ecosystem are the intellectual property of their original creators and contributors. Full credit, gratitude, and recognition are extended to the open-source engineering, design, and AI communities:
+
+* **Matt Pocock & Engineering Community:** For the battle-tested TypeScript best practices, deep module designs, domain modeling heuristics, and the 23 foundational architectural principles.
+* **Emil Kowalski, Jakub Krehel, & Jhey Tompkins:** For the foundational micro-motion curves, interaction design rules, and animation timing budgets codified into `design-motion-principles`.
+* **The Impeccable & Anti-Slop Design Authors:** For the visual hierarchy standards, typographic scale rules, and design director guidelines codified into `impeccable`, `design-taste-frontend`, and `high-end-visual-design`.
+* **The AgentSkills.io Community:** For defining and pioneering the open standard of 3-Tier Progressive Disclosure via `SKILL.md` frontmatter and `references/` directory structures.
+
+*All rights, trademarks, and copyrights for respective skills belong entirely to their original authors.*
+
