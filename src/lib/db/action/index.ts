@@ -1,5 +1,6 @@
 export { createUser } from "./user";
 export { createProject } from "./project";
+export { deleteProject } from "./deleteProject";
 export { createChatMessage } from "./chatHistory";
 export { createLlmExecution } from "./llmExecution";
 

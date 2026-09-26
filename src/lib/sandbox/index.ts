@@ -2,7 +2,7 @@ import { Image, Daytona } from "@daytona/sdk";
 import { env } from "@/lib/utils/env";
 
 export const daytona = new Daytona({ apiKey: env.DAYTONA_API_KEY });
-const SNAPSHOT = "react-vite-bun-v2";
+const SNAPSHOT = "react-vite-bun-v3";
 
 async function createSnapShot() {
   try {
@@ -10,8 +10,11 @@ async function createSnapShot() {
       name: SNAPSHOT,
       image: Image.base("oven/bun:1-debian").runCommands(
         "apt-get update && apt-get install -y curl git",
+        "bun add -g playwright",
+        "bunx --bun playwright install --with-deps chromium",
         "git clone https://github.com/keplar-404/template-react-project.git /home/daytona/app",
-        "cd /home/daytona/app && bun install",
+        "cd /home/daytona/app && bun install"
+        
       ),
       entrypoint: [
         "bun",

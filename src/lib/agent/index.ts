@@ -21,7 +21,7 @@ const backend = new FilesystemBackend({
 // PostgresSaver uses the Neon pool and writes checkpoints to Neon DB.
 // thread_id = projectId — each project has its own isolated graph state.
 // Docs: https://docs.langchain.com/oss/javascript/langgraph/checkpointers
-const checkpointer = new PostgresSaver(pgPool);
+export const checkpointer = new PostgresSaver(pgPool);
 
 let _setupDone = false;
 export async function ensureCheckpointerReady() {

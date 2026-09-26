@@ -15,7 +15,7 @@ import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import sharp from "sharp";
 import { z } from "zod";
 import { env } from "@/lib/utils/env";
-import { uploadAsset } from "@/lib/objectStorage";
+import { uploadFiles } from "@/lib/objectStorage";
 import type { ExtractedAsset, SourceImage, AssetRequest } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -372,7 +372,7 @@ export async function extractAssets(
           const cleanLabel = req.description.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase();
           const filename = `assets/${req.requestId}-${cleanLabel}.png`;
           try {
-            url = await uploadAsset(filename, croppedBuffer, "image/png");
+            [url] = await uploadFiles([{ key: filename, buffer: croppedBuffer, contentType: "image/png" }]);
           } catch (uploadErr) {
             console.error(`[AssetExtraction] Failed to upload ${filename} to object storage:`, uploadErr);
           }
