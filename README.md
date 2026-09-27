@@ -35,7 +35,7 @@ flowchart TD
     end
 
     subgraph DecisionLayer["Decision & Intent Routing (TypeSafe Jev)"]
-        Router["1. modelRouter (<40ms System One)\n- Task: write_code | review_code | normal_chat\n- 100% Vision Models (Gemini Flash, GPT-4o Mini, Claude 3.7)\n2. agentToolSelection (<40ms System One)\n- Evaluates 15 Agent Tools from fsOperations & assetExtraction\n- Multi-Tool Returns (score >= 1.2)"]
+        Router["TypeSafe Jev Router (src/lib/agentRouter)\n1. modelSelection (<40ms System One)\n- Task: write_code | review_code | normal_chat\n- 100% Vision Models (Gemini Flash, GPT-4o Mini, Claude 3.7)\n2. toolSelection (<40ms System One)\n- Evaluates 17 Agent Tools (fsOperations, assets, screenshot)\n- Multi-Tool Returns (score >= 1.2)\n3. skillSelection (<40ms System One)\n- Evaluates 7 Curated Parent Skills\n- Dynamic Skill Context Injection (score >= 1.2)"]
     end
 
     subgraph AgentCore["Deep Agent Pipeline (deepagents v1.14)"]
@@ -47,9 +47,10 @@ flowchart TD
         MW5["5. Compaction Summarizer (80k Compress)"]
     end
 
-    subgraph ToolEcosystem["Tool Registry (15 Structured Tools)"]
-        FSTools["14 Daytona FS Tools\n(read, write, delete, search, move, glob)"]
+    subgraph ToolEcosystem["Tool Registry (17 Structured Tools)"]
+        FSTools["15 Daytona FS Tools\n(read, write, insert, delete, search, move, glob)"]
         VisionTool["extract_website_assets\n(Gemini 3.6 Flash + Sharp In-Memory Crop)"]
+        ScreenshotTool["sandboxcodeprescreenshottool\n(Playwright Headless + 4 Viewports + S3)"]
     end
 
     subgraph Sandbox["Daytona Cloud Sandbox"]
@@ -122,6 +123,7 @@ Relie AI delivers an autonomous full-stack software engineering platform. Below 
 * **Atomic File Synthesis & Persistence:**
   * `upload_file`: Writes or overwrites single code files.
   * `upload_files`: Batch writes multiple source files in an atomic operation.
+  * `insert_text_at_line`: Inserts code lines, imports, components, or newline gaps at an exact 1-indexed line position without rewriting the entire file.
   * `delete_file`: Recursively deletes files or directories.
   * `move_files`: Atomically renames or relocates files and folders.
 * **Inspection & Code Retrieval:**
@@ -142,14 +144,24 @@ Relie AI delivers an autonomous full-stack software engineering platform. Below 
 * **C-Level In-Memory Slicing (`sharp`):** Normalizes EXIF orientation and slices pixel rectangles directly in RAM using `libvips` without writing intermediate files to disk.
 * **Zero-Base64 Context Hygiene:** Directly uploads cropped PNG buffers to Neon S3 (`project-assets` bucket), returning clean public CDN URLs and saving 100k+ tokens per prompt.
 
-### 7. Streaming Document & Media Ingestion Engine (MuPDF & Sharp)
+### 7. Full-Page Responsive Screenshot Verification (Playwright & Object Storage)
+* **Automated Multi-Device Viewport Slicing:** Uses headless Playwright inside the Daytona sandbox to capture pixel-perfect full-page screenshots across 4 standard viewports:
+  * `desktop`: 1920 × 1080
+  * `laptop`: 1440 × 900
+  * `tablet`: 820 × 1180
+  * `mobile`: 390 × 844
+* **Network & Font Idle Synchronization:** Awaits `networkidle`, `document.fonts.ready`, and full DOM load before capturing to eliminate blank or half-rendered images.
+* **Direct Object Storage Persistence:** Automatically streams captured PNG buffers to Neon S3 (`project-assets` bucket) and returns public CDN URLs for visual inspection.
+* **Visual Bug & Regression Detection:** Enables the agent to inspect rendered layout overflow, broken CSS flex/grid structures, overlapping text, and responsiveness bugs across all device sizes.
+
+### 8. Streaming Document & Media Ingestion Engine (MuPDF & Sharp)
 * **Polymorphic File Input Handling:** Transparently ingests diverse file inputs (`Buffer`, `Uint8Array`, `Blob`, `File`, remote URLs, data URIs) into normalized memory buffers.
 * **Zero-Latency Pass-Through:** Immediately passes PNG, JPEG, WebP, GIF, and SVG files through without re-encoding or image degradation.
 * **Embedded Artifex MuPDF C/WASM Engine:** Embedded `mupdf` (v1.28.1) rasterizes multi-page PDF documents in-memory with sub-millisecond trailer parsing without pre-indexing.
 * **AsyncGenerator Memory Isolation:** Streams rendered page buffers one-by-one (`yield page`) with $O(1)$ memory consumption, eliminating Out-Of-Memory crashes on 200+ page documents.
 * **Defensive Page Ceiling:** Automatically limits document parsing to a safe 50-page maximum.
 
-### 8. Transactional State & LangGraph Checkpointing (Neon Serverless Postgres)
+### 9. Transactional State & LangGraph Checkpointing (Neon Serverless Postgres)
 * **Thread-Isolated Agent Checkpointing:** Persists execution graph state using `@langchain/langgraph-checkpoint-postgres` keyed by `projectId`, enabling multi-day workflow resumption across disconnects or restarts.
 * **Strict Relational Schema (Drizzle ORM):**
   * `users`: Mirrors Clerk user identities with unique indexed IDs.
@@ -158,12 +170,12 @@ Relie AI delivers an autonomous full-stack software engineering platform. Below 
   * `llm_executions`: Stores sequenced execution traces (`reasoning`, `tool_call`, `tool_done`) linked directly to assistant turns.
 * **Serverless Connection Pooling:** Fully managed serverless PostgreSQL pool with instant branch-scoped scaling.
 
-### 9. Real-Time Streaming SSE Agent API & Atomic Trace Auditing
+### 10. Real-Time Streaming SSE Agent API & Atomic Trace Auditing
 * **Real-Time Natural Arrival Streaming:** Next.js 16 App Router streaming endpoint (`POST /api/v1/agent`) streaming `AIMessageChunk` reasoning tokens and `ToolMessage` events as they occur.
 * **Crash-Resilient Persistence:** Sequentially buffers reasoning and tool call lifecycle events in-memory, committing full execution traces atomically to Neon Postgres on stream completion.
 * **Compaction Noise Suppression:** Automatically intercepts and filters internal LangGraph summarization events (`metadata.lcSource === "summarization"`), ensuring clean client-facing streams.
 
-### 10. Zero-Trust Edge Authentication & Lazy Identity Synchronization
+### 11. Zero-Trust Edge Authentication & Lazy Identity Synchronization
 * **Edge Middleware Protection:** Clerk Edge middleware (`src/proxy.ts`) authenticates all API and application routes before requests hit server runtimes.
 * **On-Demand Lazy User Mirroring:** Resolves Clerk user IDs into internal relational Postgres records (`src/lib/auth/currentUser.ts`), fetching profile details from Clerk REST API only when absent.
 
@@ -186,7 +198,7 @@ Relie AI delivers an autonomous full-stack software engineering platform. Below 
 | **App Framework** | Next.js (App Router) | `16.3.5` | React Server Components, client IDE shell, API routing |
 | **UI Runtime** | React | `19.2.8` | Concurrent client-side state, streaming UI rendering |
 | **Agent Framework** | `deepagents` + `@langchain/core` | `1.14.0` / `1.2.12` | ReAct reasoning loop, memory backend, tool execution |
-| **Decision & Tool Router** | TypeSafe Jev (`@typesafe-ai/sdk`) | `0.6.0` | Sub-50ms System One vision model routing (`modelRouter`) & autonomous multi-tool selection (`agentToolSelection`) |
+| **Decision, Tool & Skill Router** | TypeSafe Jev (`@typesafe-ai/sdk`) | `0.6.0` | Sub-50ms System One vision model routing (`modelSelection`), autonomous multi-tool selection (`toolSelection`), & skill routing (`skillSelection`) |
 | **Primary LLMs** | OpenRouter (`gpt-4o-mini`, `claude-3.7-sonnet`, `gemini-2.0-flash-001`) | — | 100% native vision tiering: standard code synthesis, complex architecture, and light chat |
 | **Vision Detector** | OpenRouter (`google/gemini-3.6-flash`) | — | Sub-second 2D normalized object bounding-box detection |
 | **PDF & Doc Engine** | MuPDF (`mupdf`) | `1.28.1` | Ultra-fast C/WASM PDF rasterization & streaming page splitting (zero disk I/O) |
@@ -218,7 +230,7 @@ Relie AI delivers an autonomous full-stack software engineering platform. Below 
 ---
 
 ### 2. Intelligent Dynamic Model Routing (TypeSafe Jev System One)
-- **Where:** `src/lib/agentDecisionsMaker/modelRouter.ts` and `src/lib/agentDecisionsMaker/index.ts`.
+- **Where:** `src/lib/agentRouter/modelSelection.ts` and `src/lib/agentRouter/index.ts`.
 - **When:** Evaluated on every incoming user prompt before invoking the deep agent reasoning loop.
 - **Why:** Full-stack autonomous engineering requests range from conversational greetings and conceptual questions to high-volume UI component generation and complex multi-file architectural refactors. Routing every prompt to an expensive flagship model incurs unnecessary latency ($2{-}5\text{s}$) and costs, while routing complex builds to lightweight models degrades code quality. TypeSafe Jev evaluates requests in $<40\text{ms}$ with zero output token overhead using calibrated probability heads, mapping prompts directly to the optimal OpenRouter model tier.
 - **How:**
@@ -235,7 +247,7 @@ Relie AI delivers an autonomous full-stack software engineering platform. Below 
 
 ```mermaid
 flowchart TD
-    Prompt["User Prompt Ingested"] --> Jev["TypeSafe Jev System One (<40ms)\n(src/lib/agentDecisionsMaker/modelRouter.ts)"]
+    Prompt["User Prompt Ingested"] --> Jev["TypeSafe Jev System One (<40ms)\n(src/lib/agentRouter/modelSelection.ts)"]
     Jev --> TaskChoice{"task_type (choice)"}
     Jev --> CompScore{"complexity (score: 0-3)"}
     
@@ -250,7 +262,7 @@ flowchart TD
 ```
 
 ```typescript
-import { routeModel } from "@/lib/agentDecisionsMaker";
+import { routeModel, modelSelection } from "@/lib/agentRouter";
 
 const model = await routeModel(userPrompt);
 // e.g. "Create a responsive pricing table in Tailwind"
@@ -260,26 +272,27 @@ const model = await routeModel(userPrompt);
 ---
 
 ### 3. Autonomous Multi-Tool Selection Router (TypeSafe Jev System One)
-- **Where:** `src/lib/agentDecisionsMaker/agentToolSelection.ts` and `src/lib/agentDecisionsMaker/index.ts`.
+- **Where:** `src/lib/agentRouter/toolSelection.ts` and `src/lib/agentRouter/index.ts`.
 - **When:** Evaluated on every incoming prompt (and optional attached file links) prior to initializing or configuring the agent's active tool execution list.
-- **Why:** Full-stack autonomous agents have 15 specialized tools across filesystem operations and visual asset extraction. Providing all tools unconditionally to every prompt increases prompt token overhead, distracts the model, increases latency, and increases hallucinations. `agentToolSelection` dynamically evaluates which tools are genuinely needed in $<50\text{ms}$ using TypeSafe Jev `score()` on a continuous 0-2 scale (`0 = Not needed`, `1 = Useful`, `2 = Essential`).
+- **Why:** Full-stack autonomous agents have 17 specialized tools across filesystem operations, visual asset extraction, and responsive browser screenshots. Providing all tools unconditionally to every prompt increases prompt token overhead, distracts the model, increases latency, and increases hallucinations. `toolSelection` dynamically evaluates which tools are genuinely needed in $<50\text{ms}$ using TypeSafe Jev `score()` on a continuous 0-2 scale (`0 = Not needed`, `1 = Useful`, `2 = Essential`).
 - **How:**
   1. **Pure Functional Ingestion:** Accepts user prompt text and optional attached `fileUrls` array:
      ```typescript
-     agentToolSelection(text: string, fileUrls?: string[]): Promise<string[]>
+     routeTools(text: string, fileUrls?: string[]): Promise<string[]>
+     // alias: toolSelection
      ```
-  2. **Active Tool Suite Ingestion:** Dynamically evaluates all 15 active tools imported from `fsOperations` (14 tools) and `assetExtraction` (1 tool), using their actual names and descriptions (no artificial or extraneous tools).
+  2. **Active Tool Suite Ingestion:** Dynamically evaluates all 17 active tools imported from `fsOperations` (15 tools including line-targeted `insertTextAtLineTool`), `assetExtraction` (1 tool), and `sandboxcodeprescreenshottool` (1 tool), using their actual names and descriptions.
   3. **Calibrated 3-Level Evaluation:** Scores each tool against the calibrated 0 to 2 rubric:
      - `0`: Not needed for this request
      - `1`: Useful supporting tool for this request
      - `2`: Essential primary tool for this request
-  4. **Calibrated `>= 1.2` Multi-Tool Threshold:** Filters tools scoring $\ge 1.2$. This calibrated threshold reliably includes both Essential (`>= 1.6`) and Useful (`1.2 - 1.59`) tools (such as file reading/searching or file creation/uploading), while eliminating irrelevant tools (`0.0 - 0.2`).
+  4. **Calibrated `>= 1.2` Multi-Tool Threshold:** Filters tools scoring $\ge 1.2$. This calibrated threshold reliably includes both Essential (`>= 1.6`) and Useful (`1.2 - 1.59`) tools, while eliminating irrelevant tools (`0.0 - 0.2`).
   5. **Sorted Multi-Tool Return:** Returns an array of selected tool names sorted by relevance score descending (`Promise<string[]>`), or `[]` if the prompt is purely conversational.
 
 ```mermaid
 flowchart TD
-    Prompt["User Prompt + Optional File URLs"] --> Jev["TypeSafe Jev score() (<50ms)\n(src/lib/agentDecisionsMaker/agentToolSelection.ts)"]
-    Jev --> ToolEval["Evaluate 15 Real Tools in Parallel\n(14 fsOperations + 1 assetExtraction)"]
+    Prompt["User Prompt + Optional File URLs"] --> Jev["TypeSafe Jev score() (<50ms)\n(src/lib/agentRouter/toolSelection.ts)"]
+    Jev --> ToolEval["Evaluate 17 Real Tools in Parallel\n(15 fsOperations + 1 assetExtraction + 1 screenshotTool)"]
     ToolEval --> Scoring["Rubric (0-2 Scale):\n0 = Not needed\n1 = Useful\n2 = Essential"]
     Scoring --> Cutoff{"score >= 1.2 ?"}
     Cutoff -- Yes --> Keep["Selected Tools (Sorted by Relevance)"]
@@ -288,22 +301,55 @@ flowchart TD
 ```
 
 ```typescript
-import { agentToolSelection } from "@/lib/agentDecisionsMaker";
+import { routeTools, toolSelection } from "@/lib/agentRouter";
 
 // Scenario 1: Feature creation prompt
-const tools = await agentToolSelection("from this project create user table feature with pricing");
+const tools = await toolSelection("from this project create user table feature with pricing");
 // => ["upload_file", "upload_files", "read_files_text", "search_files", "get_file_details", ...]
 
 // Scenario 2: Visual design asset extraction prompt
-const visualTools = await agentToolSelection(
+const visualTools = await toolSelection(
   "From this document get the context of the design and update my website structure but make sure review it first",
   ["https://cdn.example.com/mockup.png"]
 );
 // => ["extract_website_assets", "upload_file", "read_files_text", "search_files", ...]
 
-// Scenario 3: Conversational prompt
-const chatTools = await agentToolSelection("How can I create or update a button in this project?");
+// Scenario 3: Responsive preview audit prompt
+const auditTools = await toolSelection("Audit the live site across mobile and desktop for layout overflow");
+// => ["sandboxcodeprescreenshottool", "read_files_text", ...]
+
+// Scenario 4: Conversational prompt
+const chatTools = await toolSelection("How can I create or update a button in this project?");
 // => [] (Pure conversational guidance, no filesystem tools needed)
+```
+
+---
+
+### 3b. Autonomous Skill Selection Router (TypeSafe Jev System One)
+- **Where:** `src/lib/agentRouter/skillSelection.ts` and `src/lib/agentRouter/index.ts`.
+- **When:** Evaluated alongside tool selection on incoming user prompts to determine which specialized parent design, craft, or engineering skill guidelines should be dynamically injected into the agent context.
+- **Why:** Relie features 7 curated parent skills covering frontend design taste, UI craft, minimal engineering, code review, and communication. Unconditionally injecting all skills into every prompt burns tens of thousands of tokens and causes guideline collision. `skillSelection` evaluates prompt requirements in $<40\text{ms}$ and injects only the relevant domain skill guidelines.
+- **How:**
+  1. **Evaluates 7 Parent Engineering Skills:**
+     - `frontend-design-taste`: Modern aesthetics, anti-slop principles, responsive rhythm.
+     - `ui-craft-impeccable`: Micro-interactions, visual hierarchy, polished design systems.
+     - `frontend-code-craft`: Surgical TypeScript architecture, clean component separation.
+     - `ponytail-engineering`: Minimalist, lazy, standard-library-first engineering.
+     - `frontend-quality-review`: Security audit, diff review, bug diagnosis.
+     - `agent-communication`: Clear intent, requirement planning, concise responses.
+     - `architectural-principles`: 23 core engineering principles and domain modeling.
+  2. **Calibrated `>= 1.2` Selection Threshold:** Selects and sorts skills matching the request intent in descending order of relevance.
+
+```typescript
+import { routeSkills, skillSelection } from "@/lib/agentRouter";
+
+// Design prompt
+const skills = await skillSelection("Redesign the hero section with modern glassmorphism and subtle animations");
+// => ["frontend-design-taste", "ui-craft-impeccable"]
+
+// Refactoring prompt
+const refactorSkills = await skillSelection("Simplify this messy form component and strip out unused dependencies");
+// => ["ponytail-engineering", "frontend-code-craft"]
 ```
 
 ---
@@ -454,7 +500,7 @@ Every tool is registered via LangChain's `tool(...)` helper and provides strict 
 
 ---
 
-### 10. Relational Database Schema (Drizzle ORM & PostgresSaver)
+### 12. Relational Database Schema (Drizzle ORM & PostgresSaver)
 
 ```mermaid
 erDiagram
@@ -513,7 +559,7 @@ In addition, Neon Postgres hosts the tables managed by LangGraph's `@langchain/l
 
 ---
 
-### 11. 3-Tier Progressive Skills System (AgentSkills.io Spec)
+### 13. 3-Tier Progressive Skills System (AgentSkills.io Spec)
 - **Where:** `src/lib/agent/skills/` (Active Parent Routers) and `.agents/skills/` (Preserved Library Warehouse).
 - **Architecture & Context Protection:** Instead of loading 95+ flat skill summaries into the system prompt at startup (which consumes ~5,000 tokens on *every* turn and causes choice paralysis), Relie AI adheres strictly to the official [AgentSkills.io Specification](https://agentskills.io) using **3-Tier Progressive Disclosure**:
   1. **Level 1 — Startup Metadata (~300 tokens):** The agent runtime (`deepagents`) loads only the `name` and `description` of the **7 Core Parent Domains** on startup, achieving a **94% token reduction**.
@@ -576,7 +622,7 @@ src/lib/agent/skills/
 
 ---
 
-### 12. Direct S3 Object Storage Upload Pipeline
+### 14. Direct S3 Object Storage Upload Pipeline
 - **Where:** `src/app/api/v1/upload/route.ts` and `src/lib/objectStorage/index.ts`.
 - **When:** Invoked when users upload binary assets, screenshots, or documents via the Web IDE chat interface.
 - **Why:** Keeps large binary payloads out of the database and memory, storing assets directly in high-performance S3 object storage co-located with Neon Serverless Postgres.

@@ -16,3 +16,4 @@ export * from "./replaceInFiles";
 export * from "./moveFiles";
 export * from "./runTypecheck";
 export * from "./getConsoleLogs";
+export * from "./insertTextAtLine";

@@ -10,6 +10,7 @@ import {
 } from "langchain";
 import { fsTools } from "./tools/fsOperations";
 import { assetExtractionTool } from "./tools/assetExtraction";
+import { sandboxcodeprescreenshottool } from "./tools/sandboxcodeprescreenshottool";
 import systemPromt from "./prompts/systemPromt";
 import { pgPool } from "@/lib/db/drizzle";
 
@@ -110,5 +111,9 @@ export const agent = createDeepAgent({
       keep: { messages: 20 },
     }),
   ],
-  tools: [...fsTools, assetExtractionTool],
+  tools: [
+    ...fsTools,
+    assetExtractionTool,
+    sandboxcodeprescreenshottool,
+  ],
 });
