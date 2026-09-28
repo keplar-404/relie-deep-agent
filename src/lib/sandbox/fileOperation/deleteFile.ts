@@ -29,8 +29,8 @@ export async function deleteFile({
     try {
       await sandbox.fs.deleteFile(resolvedPath, recursive);
       return `File deleted successfully from ${resolvedPath}`;
-    } catch (err: any) {
-      const msg = err?.message || String(err);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("cannot delete directory without recursive flag")) {
         // Auto-retry with recursive = true for directories
         await sandbox.fs.deleteFile(resolvedPath, true);

@@ -1,4 +1,4 @@
-import { agent } from "@/lib/agent";
+import { agent, createAgent } from "@/lib/agent";
 
 export function invokeAgent(
   content:
@@ -20,8 +20,17 @@ export function invokeAgent(
   // thread_id = projectId — checkpointer uses this to save/resume graph state per project.
   // Docs: "you must specify a thread_id as part of the configurable portion of the config"
   threadId: string,
+  options?: {
+    model?: string;
+    sandBoxId?: string;
+  },
 ): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
+  const activeAgent = options?.model ? createAgent(options.model) : agent;
+  const configurable: Record<string, unknown> = { thread_id: threadId };
+  if (options?.sandBoxId) {
+    configurable.sandBoxId = options.sandBoxId;
+  }
 
   return new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -32,11 +41,11 @@ export function invokeAgent(
       }
 
       try {
-        const stream = await agent.streamEvents(
+        const stream = await activeAgent.streamEvents(
           { messages: [{ role: "user", content }] },
           {
             version: "v3",
-            configurable: { thread_id: threadId },
+            configurable,
           },
         );
 

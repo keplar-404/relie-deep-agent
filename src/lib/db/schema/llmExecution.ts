@@ -1,5 +1,4 @@
 import { pgTable, uuid, varchar, integer, timestamp, jsonb } from "drizzle-orm/pg-core";
-import { users } from "./user";
 import { projects } from "./project";
 import { chatHistory } from "./chatHistory";
 

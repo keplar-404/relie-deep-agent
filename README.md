@@ -35,7 +35,7 @@ flowchart TD
     end
 
     subgraph DecisionLayer["Decision & Intent Routing (TypeSafe Jev)"]
-        Router["TypeSafe Jev Router (src/lib/agentRouter)\n1. modelSelection (<40ms System One)\n- Task: write_code | review_code | normal_chat\n- 100% Vision Models (Gemini Flash, GPT-4o Mini, Claude 3.7)\n2. toolSelection (<40ms System One)\n- Evaluates 17 Agent Tools (fsOperations, assets, screenshot)\n- Multi-Tool Returns (score >= 1.2)\n3. skillSelection (<40ms System One)\n- Evaluates 7 Curated Parent Skills\n- Dynamic Skill Context Injection (score >= 1.2)"]
+        Router["TypeSafe Jev Router (src/lib/agent/agentRouter)\n1. modelSelection (<40ms System One)\n- Task: write_code | review_code | normal_chat\n- 100% Vision Models (Gemini Flash, GPT-4o Mini, Claude 3.7)\n2. toolSelection (<40ms System One)\n- Evaluates 17 Agent Tools (fsOperations, assets, screenshot)\n- Multi-Tool Returns (score >= 1.2)\n3. skillSelection (<40ms System One)\n- Evaluates 7 Curated Parent Skills\n- Dynamic Skill Context Injection (score >= 1.2)\n4. workflowSelection (<40ms System One)\n- Dispatches to 'ship' (visual QA loop) or 'normal' (single-pass)"]
     end
 
     subgraph AgentCore["Deep Agent Pipeline (deepagents v1.14)"]
@@ -198,7 +198,7 @@ Relie AI delivers an autonomous full-stack software engineering platform. Below 
 | **App Framework** | Next.js (App Router) | `16.3.5` | React Server Components, client IDE shell, API routing |
 | **UI Runtime** | React | `19.2.8` | Concurrent client-side state, streaming UI rendering |
 | **Agent Framework** | `deepagents` + `@langchain/core` | `1.14.0` / `1.2.12` | ReAct reasoning loop, memory backend, tool execution |
-| **Decision, Tool & Skill Router** | TypeSafe Jev (`@typesafe-ai/sdk`) | `0.6.0` | Sub-50ms System One vision model routing (`modelSelection`), autonomous multi-tool selection (`toolSelection`), & skill routing (`skillSelection`) |
+| **Decision, Tool, Skill & Workflow Router** | TypeSafe Jev (`@typesafe-ai/sdk`) | `0.6.0` | Sub-50ms System One vision model routing (`modelSelection`), autonomous multi-tool selection (`toolSelection`), skill routing (`skillSelection`), & workflow routing (`workflowSelection`) |
 | **Primary LLMs** | OpenRouter (`gpt-4o-mini`, `claude-3.7-sonnet`, `gemini-2.0-flash-001`) | — | 100% native vision tiering: standard code synthesis, complex architecture, and light chat |
 | **Vision Detector** | OpenRouter (`google/gemini-3.6-flash`) | — | Sub-second 2D normalized object bounding-box detection |
 | **PDF & Doc Engine** | MuPDF (`mupdf`) | `1.28.1` | Ultra-fast C/WASM PDF rasterization & streaming page splitting (zero disk I/O) |
@@ -230,7 +230,7 @@ Relie AI delivers an autonomous full-stack software engineering platform. Below 
 ---
 
 ### 2. Intelligent Dynamic Model Routing (TypeSafe Jev System One)
-- **Where:** `src/lib/agentRouter/modelSelection.ts` and `src/lib/agentRouter/index.ts`.
+- **Where:** `src/lib/agent/agentRouter/modelSelection.ts` and `src/lib/agent/agentRouter/index.ts`.
 - **When:** Evaluated on every incoming user prompt before invoking the deep agent reasoning loop.
 - **Why:** Full-stack autonomous engineering requests range from conversational greetings and conceptual questions to high-volume UI component generation and complex multi-file architectural refactors. Routing every prompt to an expensive flagship model incurs unnecessary latency ($2{-}5\text{s}$) and costs, while routing complex builds to lightweight models degrades code quality. TypeSafe Jev evaluates requests in $<40\text{ms}$ with zero output token overhead using calibrated probability heads, mapping prompts directly to the optimal OpenRouter model tier.
 - **How:**
@@ -247,7 +247,7 @@ Relie AI delivers an autonomous full-stack software engineering platform. Below 
 
 ```mermaid
 flowchart TD
-    Prompt["User Prompt Ingested"] --> Jev["TypeSafe Jev System One (<40ms)\n(src/lib/agentRouter/modelSelection.ts)"]
+    Prompt["User Prompt Ingested"] --> Jev["TypeSafe Jev System One (<40ms)\n(src/lib/agent/agentRouter/modelSelection.ts)"]
     Jev --> TaskChoice{"task_type (choice)"}
     Jev --> CompScore{"complexity (score: 0-3)"}
     
@@ -262,7 +262,7 @@ flowchart TD
 ```
 
 ```typescript
-import { routeModel, modelSelection } from "@/lib/agentRouter";
+import { routeModel, modelSelection } from "@/lib/agent/agentRouter";
 
 const model = await routeModel(userPrompt);
 // e.g. "Create a responsive pricing table in Tailwind"
@@ -272,7 +272,7 @@ const model = await routeModel(userPrompt);
 ---
 
 ### 3. Autonomous Multi-Tool Selection Router (TypeSafe Jev System One)
-- **Where:** `src/lib/agentRouter/toolSelection.ts` and `src/lib/agentRouter/index.ts`.
+- **Where:** `src/lib/agent/agentRouter/toolSelection.ts` and `src/lib/agent/agentRouter/index.ts`.
 - **When:** Evaluated on every incoming prompt (and optional attached file links) prior to initializing or configuring the agent's active tool execution list.
 - **Why:** Full-stack autonomous agents have 17 specialized tools across filesystem operations, visual asset extraction, and responsive browser screenshots. Providing all tools unconditionally to every prompt increases prompt token overhead, distracts the model, increases latency, and increases hallucinations. `toolSelection` dynamically evaluates which tools are genuinely needed in $<50\text{ms}$ using TypeSafe Jev `score()` on a continuous 0-2 scale (`0 = Not needed`, `1 = Useful`, `2 = Essential`).
 - **How:**
@@ -291,7 +291,7 @@ const model = await routeModel(userPrompt);
 
 ```mermaid
 flowchart TD
-    Prompt["User Prompt + Optional File URLs"] --> Jev["TypeSafe Jev score() (<50ms)\n(src/lib/agentRouter/toolSelection.ts)"]
+    Prompt["User Prompt + Optional File URLs"] --> Jev["TypeSafe Jev score() (<50ms)\n(src/lib/agent/agentRouter/toolSelection.ts)"]
     Jev --> ToolEval["Evaluate 17 Real Tools in Parallel\n(15 fsOperations + 1 assetExtraction + 1 screenshotTool)"]
     ToolEval --> Scoring["Rubric (0-2 Scale):\n0 = Not needed\n1 = Useful\n2 = Essential"]
     Scoring --> Cutoff{"score >= 1.2 ?"}
@@ -301,7 +301,7 @@ flowchart TD
 ```
 
 ```typescript
-import { routeTools, toolSelection } from "@/lib/agentRouter";
+import { routeTools, toolSelection } from "@/lib/agent/agentRouter";
 
 // Scenario 1: Feature creation prompt
 const tools = await toolSelection("from this project create user table feature with pricing");
@@ -326,7 +326,7 @@ const chatTools = await toolSelection("How can I create or update a button in th
 ---
 
 ### 3b. Autonomous Skill Selection Router (TypeSafe Jev System One)
-- **Where:** `src/lib/agentRouter/skillSelection.ts` and `src/lib/agentRouter/index.ts`.
+- **Where:** `src/lib/agent/agentRouter/skillSelection.ts` and `src/lib/agent/agentRouter/index.ts`.
 - **When:** Evaluated alongside tool selection on incoming user prompts to determine which specialized parent design, craft, or engineering skill guidelines should be dynamically injected into the agent context.
 - **Why:** Relie features 7 curated parent skills covering frontend design taste, UI craft, minimal engineering, code review, and communication. Unconditionally injecting all skills into every prompt burns tens of thousands of tokens and causes guideline collision. `skillSelection` evaluates prompt requirements in $<40\text{ms}$ and injects only the relevant domain skill guidelines.
 - **How:**
@@ -341,7 +341,7 @@ const chatTools = await toolSelection("How can I create or update a button in th
   2. **Calibrated `>= 1.2` Selection Threshold:** Selects and sorts skills matching the request intent in descending order of relevance.
 
 ```typescript
-import { routeSkills, skillSelection } from "@/lib/agentRouter";
+import { routeSkills, skillSelection } from "@/lib/agent/agentRouter";
 
 // Design prompt
 const skills = await skillSelection("Redesign the hero section with modern glassmorphism and subtle animations");
@@ -350,6 +350,61 @@ const skills = await skillSelection("Redesign the hero section with modern glass
 // Refactoring prompt
 const refactorSkills = await skillSelection("Simplify this messy form component and strip out unused dependencies");
 // => ["ponytail-engineering", "frontend-code-craft"]
+```
+
+---
+
+### 3c. Autonomous Agent Workflow Pipelines (Ship & Normal Workflows)
+- **Where:** `src/lib/agent/agentWorkflow/` (`normalWorkflow.ts`, `shipWorkflow.ts`, `index.ts`).
+- **When:** Invoked to execute agent tasks with structured routing and optional automated visual verification.
+- **Why:** Full-stack UI creation requires more than blind code generation—it demands automated verification that the website actually rendered correctly across all device viewports. The workflows encapsulate end-to-end execution:
+  1. **Normal Workflow (`normalWorkflow`):** Single-pass execution that routes model and tools via TypeSafe Jev System One, augments the prompt, and executes the agent once.
+  2. **Ship Feature Workflow (`shipWorkflow`):** Production-ready visual QA loop. Runs the initial agent build pass, captures full-page responsive screenshots (desktop, laptop, tablet, mobile), evaluates them with TypeSafe Jev System One (`noul` + `score`), and if defects or missing features are found, re-engages the agent with visual feedback to fix the code. Bounded to a maximum of 4 iterations to prevent runaway token costs.
+
+```mermaid
+flowchart TD
+    Req["Workflow Input (Prompt, File URLs, Project & Sandbox ID)"] --> Route["1. TypeSafe Routing\n- routeModel (<40ms)\n- routeTools (<50ms)"]
+    Route --> Aug["2. Augment Prompt with Routing Metadata"]
+    Aug --> Exec["3. Agent Build Pass (agent.invoke)"]
+    Exec --> Branch{"Workflow Type"}
+    
+    Branch -->|Normal| DoneNormal["Return Response + Selected Metadata"]
+    
+    Branch -->|Ship| Cap["4. captureResponsiveScreenshots()\n(Desktop, Laptop, Tablet, Mobile)"]
+    Cap --> JevVerify["5. TypeSafe Jev Visual Verification\n- is_complete (noul: 0-1)\n- completion_score (score: 0-2)"]
+    JevVerify --> Pass{"noul >= 0.8 OR score >= 1.6?"}
+    Pass -- Yes --> DoneShip["Verified Complete: Ship Website\n(No redundant screenshots taken)"]
+    Pass -- No --> Limit{"Attempt < 4?"}
+    Limit -- Yes --> Fix["Feed Screenshots + Critique to Agent to Fix Code"]
+    Fix --> Cap
+    Limit -- No --> MaxExit["Halt (4-Attempt Cost Bound Reached)"]
+```
+
+```typescript
+import { routeWorkflow, evaluateWorkflow } from "@/lib/agent/agentRouter";
+import { runWorkflow, shipWorkflow, normalWorkflow } from "@/lib/agent/agentWorkflow";
+
+// 1. Dynamic workflow routing (<40ms TypeSafe Jev System One)
+const workflow = await routeWorkflow("Can you change the navbar background to glassmorphism?");
+// => "ship" (detects frontend UI change, even when framed as a question)
+
+const infoWorkflow = await routeWorkflow("How does authentication work in this repo?");
+// => "normal" (detects informational non-visual inquiry)
+
+// 2. Automated execution with runWorkflow (auto-dispatches to ship or normal)
+const result = await runWorkflow({
+  userMessage: "Build a responsive pricing section with monthly/annual toggle and 3 tier cards",
+  projectId: "...",
+  sandBoxId: "...",
+});
+
+if (result.workflow === "ship") {
+  console.log(result.success);     // true (visually verified)
+  console.log(result.iterations);  // number of visual QA passes
+  console.log(result.screenshots); // 4 viewport CDN URLs (desktop, laptop, tablet, mobile)
+} else {
+  console.log(result.response);    // direct text response
+}
 ```
 
 ---

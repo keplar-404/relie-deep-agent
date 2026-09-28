@@ -1,214 +1,183 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { AIMessageChunk, ToolMessage } from "langchain";
 import { currentUser } from "@/lib/auth";
-import { agent, ensureCheckpointerReady } from "@/lib/agent";
+import { getProject } from "@/lib/db/action";
 import { createChatMessage } from "@/lib/db/action/chatHistory";
-import { createLlmExecutions } from "@/lib/db/action/llmExecution";
+import {
+  createLlmExecutions,
+  type CreateLlmExecution,
+} from "@/lib/db/action";
+import { runWorkflow } from "@/lib/agent/agentWorkflow";
 
 const bodySchema = z.object({
-  // projectId is used as the LangGraph thread_id — isolates checkpointed
-  // graph state per project. Docs require thread_id in configurable.
-  projectId: z.uuid(),
-  message: z.union([
-    z.string().min(1),
-    z.tuple([
-      z.object({ type: z.literal("text"), text: z.string().min(1) }),
-      z.object({
-        type: z.enum(["image", "file"]),
-        url: z.url(),
-        mimeType: z.enum([
-          "application/pdf",
-          "image/png",
-          "image/jpeg",
-          "image/webp",
-          "image/gif",
-          "image/svg+xml",
-        ]),
-      }),
-    ]),
-  ]),
+  projectId: z.uuid("Invalid project ID format (UUID expected)"),
+  message: z
+    .string()
+    .trim()
+    .min(1, "User query cannot be empty")
+    .max(100_000, "User query exceeds character limit"),
+  fileUrls: z
+    .array(
+      z
+        .url("Invalid URL format")
+        .refine(
+          (url) => url.startsWith("https://") || url.startsWith("http://"),
+          "File URL must use https or http protocol"
+        )
+    )
+    .max(20, "Maximum of 20 file attachments allowed")
+    .optional()
+    .default([]),
 });
 
-interface PendingToolCall {
-  id?: string;
-  name: string;
-  args: string;
-}
-
-interface ExecutionRecord {
-  type: string;
-  toolName?: string;
-  input?: unknown;
-  output?: unknown;
-  sequence: number;
-}
-
 export async function POST(req: NextRequest) {
-  // 1. Auth
+  // 1. Single-gate authentication at the API boundary
   const user = await currentUser();
   if (!user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // 2. Validate body
-  const parsed = bodySchema.safeParse(await req.json());
+  // 2. Validate request payload: message and attached file URLs
+  let rawBody: unknown;
+  try {
+    rawBody = await req.json();
+  } catch {
+    return Response.json({ error: "Malformed or empty JSON body" }, { status: 400 });
+  }
+
+  const parsed = bodySchema.safeParse(rawBody);
   if (!parsed.success) {
     return Response.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { projectId, message } = parsed.data;
+  const { projectId, message, fileUrls } = parsed.data;
+
+  // 3. Single DB lookup: verify project ownership and retrieve Daytona sandbox ID
+  const project = await getProject(projectId, user.id);
+  if (!project) {
+    return Response.json({ error: "Project not found" }, { status: 404 });
+  }
+
+  if (!project.sandboxId) {
+    return Response.json(
+      { error: "Project has no active sandbox" },
+      { status: 400 }
+    );
+  }
 
   try {
-    // 3. Save user message to DB
+    // 4. Save user message to chat history
+    const userAttachments = fileUrls.map((url, i) => {
+      const isImage =
+        /\.(png|jpe?g|webp|gif|svg)$/i.test(url) || url.includes("/image");
+      const name = url.split("/").pop()?.split("?")[0] || `file-${i + 1}`;
+      return {
+        id: crypto.randomUUID(),
+        type: (isImage ? "image" : "file") as "image" | "file",
+        name,
+        url,
+        mimeType: isImage ? "image/png" : "application/octet-stream",
+        size: 0,
+      };
+    });
+
     await createChatMessage({
       projectId,
       userId: user.id,
       role: "user",
-      content: typeof message === "string" ? message : message[0].text,
-      attachments: [],
+      content: message,
+      attachments: userAttachments,
     });
 
-    // 4. Ensure checkpointer tables exist (idempotent, runs once per process)
-    await ensureCheckpointerReady();
+    // 5. Execute workflow selection router (TypeSafe Jev: "ship" vs "normal")
+    const result = await runWorkflow({
+      userMessage: message,
+      fileUrls,
+      projectId,
+      sandBoxId: project.sandboxId,
+    });
 
-    // 5. Stream agent output in natural arrival order
-    //    streamMode: "messages" gives AIMessageChunk and ToolMessage in the order LLM produces them
-    const agentStream = await agent.stream(
-      { messages: [{ role: "user", content: message }] },
-      { streamMode: "messages", configurable: { thread_id: projectId } },
-    );
+    const responseText =
+      result.workflow === "ship" ? result.finalResponse : result.response;
 
-    let reasoningBuffer = "";
-    const pendingToolCalls = new Map<number, PendingToolCall>();
-    const executions: ExecutionRecord[] = [];
-    let seq = 0;
+    const screenshots = result.workflow === "ship" ? result.screenshots : [];
 
-    for await (const chunk of agentStream) {
-      const [msg, metadata] = chunk;
-      if (metadata?.lcSource === "summarization") continue;
+    // 6. Save assistant response to chat history
+    const assistantAttachments = screenshots.map((s) => ({
+      id: crypto.randomUUID(),
+      type: "image" as const,
+      name: `${s.label}.png`,
+      url: s.url,
+      mimeType: "image/png",
+      size: 0,
+    }));
 
-      // Handle AIMessageChunk (reasoning text or tool call chunks)
-      if (AIMessageChunk.isInstance(msg)) {
-        if (msg.tool_call_chunks && msg.tool_call_chunks.length > 0) {
-          for (const tc of msg.tool_call_chunks) {
-            const index = tc.index ?? 0;
-            if (tc.name) {
-              // New tool call starts — flush accumulated reasoning first
-              if (reasoningBuffer.trim()) {
-                executions.push({
-                  type: "reasoning",
-                  output: { text: reasoningBuffer },
-                  sequence: seq++,
-                });
-                reasoningBuffer = "";
-              }
-              pendingToolCalls.set(index, {
-                id: tc.id,
-                name: tc.name,
-                args: tc.args ?? "",
-              });
-            } else if (tc.args) {
-              const pending = pendingToolCalls.get(index);
-              if (pending) {
-                pending.args += tc.args;
-                if (!pending.id && tc.id) pending.id = tc.id;
-              }
-            }
-          }
-        } else {
-          const text = msg.text;
-          const reasoningContent =
-            typeof msg.additional_kwargs?.reasoning_content === "string"
-              ? msg.additional_kwargs.reasoning_content
-              : typeof msg.additional_kwargs?.reasoning === "string"
-                ? msg.additional_kwargs.reasoning
-                : "";
-          if (text) {
-            reasoningBuffer += text;
-          } else if (reasoningContent) {
-            reasoningBuffer += reasoningContent;
-          }
-        }
-      }
-
-      // Handle ToolMessage (tool execution finished)
-      if (ToolMessage.isInstance(msg)) {
-        let foundKey: number | undefined;
-        let matchedCall: PendingToolCall | undefined;
-
-        for (const [index, pending] of pendingToolCalls) {
-          if ((pending.id && pending.id === msg.tool_call_id) || pending.name === msg.name) {
-            foundKey = index;
-            matchedCall = pending;
-            break;
-          }
-        }
-
-        const toolName = msg.name ?? matchedCall?.name ?? "tool";
-
-        if (matchedCall) {
-          let parsedInput: unknown = matchedCall.args;
-          try {
-            parsedInput = JSON.parse(matchedCall.args);
-          } catch {
-            parsedInput = matchedCall.args;
-          }
-
-          executions.push({
-            type: "tool_call",
-            toolName: matchedCall.name,
-            input: parsedInput,
-            sequence: seq++,
-          });
-
-          if (foundKey !== undefined) {
-            pendingToolCalls.delete(foundKey);
-          }
-        }
-
-        executions.push({
-          type: "tool_done",
-          toolName,
-          output: { text: msg.text },
-          sequence: seq++,
-        });
-      }
-    }
-
-    // 6. Remaining buffer is final response text
-    const finalText = reasoningBuffer.trim();
-
-    // 7. Save assistant message first to satisfy foreign key constraint on chatHistoryId
     const assistantMsg = await createChatMessage({
       projectId,
       userId: user.id,
       role: "assistant",
-      content: finalText || "",
-      attachments: [],
+      content: responseText,
+      attachments: assistantAttachments,
     });
 
-    // 8. Save all executions in batch linked to assistant message
-    if (executions.length > 0) {
-      await createLlmExecutions(
-        executions.map((e) => ({
-          chatHistoryId: assistantMsg.id,
-          projectId,
-          sequence: e.sequence,
-          type: e.type,
-          toolName: e.toolName,
-          input: e.input,
-          output: e.output,
-        })),
-      );
+    // 7. Record LLM execution traces linked to the assistant message
+    const executions: CreateLlmExecution[] = [
+      {
+        chatHistoryId: assistantMsg.id,
+        projectId,
+        sequence: 0,
+        type: "workflow_routing",
+        output: {
+          workflow: result.workflow,
+          model: result.model,
+          tools: result.tools,
+        },
+      },
+    ];
+
+    if (result.workflow === "ship") {
+      executions.push({
+        chatHistoryId: assistantMsg.id,
+        projectId,
+        sequence: 1,
+        type: "visual_verification",
+        output: {
+          success: result.success,
+          iterations: result.iterations,
+          score: result.score,
+          noul: result.noul,
+          screenshots: result.screenshots,
+        },
+      });
     }
 
-    return Response.json({ ok: true });
+    await createLlmExecutions(executions);
+
+    // 8. Return response
+    return Response.json({
+      ok: true,
+      workflow: result.workflow,
+      model: result.model,
+      tools: result.tools,
+      response: responseText,
+      screenshots,
+      ...(result.workflow === "ship"
+        ? {
+            success: result.success,
+            iterations: result.iterations,
+            score: result.score,
+            noul: result.noul,
+          }
+        : {}),
+    });
   } catch (error) {
     console.error("[POST /api/v1/agent error]:", error);
     return Response.json(
-      { error: error instanceof Error ? error.message : "Internal Server Error" },
-      { status: 500 },
+      {
+        error:
+          error instanceof Error ? error.message : "Internal Server Error",
+      },
+      { status: 500 }
     );
   }
 }

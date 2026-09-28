@@ -22,6 +22,15 @@ export async function captureResponsiveScreenshots({
   sandBoxId: string;
   url: string;
 }): Promise<ScreenshotResult[]> {
+  try {
+    const parsed = new URL(url);
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      throw new Error(`Invalid screenshot URL protocol: ${parsed.protocol}`);
+    }
+  } catch {
+    throw new Error(`Invalid screenshot target URL: ${url}`);
+  }
+
   const sandbox = await daytona.get(sandBoxId);
 
   const script = `

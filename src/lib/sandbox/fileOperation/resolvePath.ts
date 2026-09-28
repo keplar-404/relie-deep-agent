@@ -13,13 +13,13 @@ export function resolvePath(targetPath?: string) {
 
   if (trimmed === "" || trimmed === ".") return APP_DIR;
   if (trimmed.startsWith("/") || trimmed.startsWith("\\")) {
-    return `Cannot access this path: ${targetPath}`;
+    throw new Error(`Unauthorized path access: absolute paths are not permitted (${targetPath})`);
   }
 
   const resolved = path.posix.normalize(`${APP_DIR}/${trimmed}`);
 
   if (resolved !== APP_DIR && !resolved.startsWith(`${APP_DIR}/`)) {
-    return `Cannot access this path: ${targetPath}`;
+    throw new Error(`Unauthorized path access: path traversal outside workspace (${targetPath})`);
   }
 
   return resolved;

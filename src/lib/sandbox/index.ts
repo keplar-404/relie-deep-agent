@@ -29,8 +29,11 @@ async function createSnapShot() {
         "3000",
       ],
     });
-  } catch (e: any) {
-    if (e?.statusCode !== 409) throw e; // ponytail: 409 = already exists, swallowed on purpose
+  } catch (e: unknown) {
+    if (typeof e === "object" && e !== null && "statusCode" in e && (e as { statusCode: number }).statusCode === 409) {
+      return; // ponytail: 409 = already exists, swallowed on purpose
+    }
+    throw e;
   }
 }
 

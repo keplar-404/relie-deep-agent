@@ -1,4 +1,4 @@
-import { agent } from "@/lib/agent";
+import { agent, createAgent } from "@/lib/agent";
 
 export async function invokeAgent(
   content:
@@ -18,10 +18,18 @@ export async function invokeAgent(
         },
       ],
   sandBoxId: string,
+  model?: string,
+  threadId?: string,
 ) {
-  const result = await agent.invoke(
+  const activeAgent = model ? createAgent(model) : agent;
+  const configurable: Record<string, unknown> = { sandBoxId };
+  if (threadId) {
+    configurable.thread_id = threadId;
+  }
+
+  const result = await activeAgent.invoke(
     { messages: [{ role: "user", content }] },
-    { configurable: { sandBoxId } },
+    { configurable },
   );
   return result.messages[result.messages.length - 1].content;
 }

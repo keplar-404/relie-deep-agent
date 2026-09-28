@@ -8,5 +8,7 @@ export const jev = new TypeSafeClient({
 export * from "./modelSelection";
 export * from "./toolSelection";
 export * from "./skillSelection";
+export * from "./workflowSelection";
 export { choice, noul, score, TypeSafeClient };
 export default jev;
+

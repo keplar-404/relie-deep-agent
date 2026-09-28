@@ -2,8 +2,13 @@ import { ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { s3, BUCKET } from "./index";
 
 export async function deleteFiles(prefix: string) {
+  const trimmed = prefix?.trim();
+  if (!trimmed || trimmed === "/" || trimmed.length < 3) {
+    throw new Error(`Dangerous bucket prefix rejected: "${prefix}"`);
+  }
+
   const list = await s3.send(
-    new ListObjectsV2Command({ Bucket: BUCKET, Prefix: prefix }),
+    new ListObjectsV2Command({ Bucket: BUCKET, Prefix: trimmed }),
   );
   if (!list.Contents?.length) return;
 

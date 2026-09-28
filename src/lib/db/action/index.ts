@@ -1,8 +1,8 @@
 export { createUser } from "./user";
-export { createProject } from "./project";
+export { createProject, getProject } from "./project";
 export { deleteProject } from "./deleteProject";
 export { createChatMessage } from "./chatHistory";
-export { createLlmExecution } from "./llmExecution";
+export { createLlmExecution, createLlmExecutions } from "./llmExecution";
 
 export {
   createUserSchema,
