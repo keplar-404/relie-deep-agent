@@ -1,5 +1,6 @@
-import { AppSidebar } from "@/app/(app)/_components/app-sidebar";
-import { ModeToggle } from "@/app/(app)/_components/mode-toggle";
+import Link from "next/link";
+import { AppSidebar } from "@/app/(app)/components/app-sidebar";
+import { ModeToggle } from "@/app/(app)/components/mode-toggle";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -12,10 +13,10 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { PlusIcon } from "lucide-react";
 
 /**
- * Projects page — placeholder route.
- * Shares the exact same sidebar, theme, and layout shell as Dashboard.
+ * Projects page — Shares the exact same sidebar, theme, and layout shell as Dashboard.
  */
 export default function ProjectsPage() {
   return (
@@ -40,9 +41,20 @@ export default function ProjectsPage() {
         </header>
 
         <div className="flex flex-1 items-center justify-center p-8">
-          <div className="text-center space-y-2">
+          <div className="text-center space-y-3 max-w-sm">
             <p className="text-lg font-semibold">Projects</p>
-            <p className="text-sm text-muted-foreground">Projects management coming soon.</p>
+            <p className="text-sm text-muted-foreground">
+              Manage your workspaces and start an autonomous build session.
+            </p>
+            <div className="pt-2">
+              <Link
+                href="/chat"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors shadow-xs"
+              >
+                <PlusIcon className="size-4" />
+                <span>Open Chat Workspace</span>
+              </Link>
+            </div>
           </div>
         </div>
       </SidebarInset>

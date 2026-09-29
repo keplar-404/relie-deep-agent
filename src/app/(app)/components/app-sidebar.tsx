@@ -3,9 +3,9 @@
 import * as React from "react";
 import { usePathname } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { NavMain, type NavItem } from "@/app/(app)/_components/nav-main";
-import { NavUser } from "@/app/(app)/_components/nav-user";
-import { TeamSwitcher } from "@/app/(app)/_components/team-switcher";
+import { NavMain, type NavItem } from "./nav-main";
+import { NavUser } from "./nav-user";
+import { TeamSwitcher } from "./team-switcher";
 import {
   Sidebar,
   SidebarContent,
@@ -45,9 +45,14 @@ const NAV_PRIMARY: Omit<NavItem, "isActive">[] = [
     icon: <FolderKanbanIcon className="size-4" />,
   },
   {
+    title: "Chat Workspace",
+    url: "/chat",
+    icon: <BotIcon className="size-4" />,
+  },
+  {
     title: "Agents",
     url: "#",
-    icon: <BotIcon className="size-4" />,
+    icon: <ZapIcon className="size-4" />,
     badge: 3,
   },
   {

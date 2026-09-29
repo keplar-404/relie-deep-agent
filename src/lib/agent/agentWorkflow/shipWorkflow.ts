@@ -81,7 +81,7 @@ export async function shipWorkflow({
   // 3. First agent execution pass (implements/updates the website)
   const firstPass = await agent.invoke(
     { messages: [{ role: "user", content: initialContent }] },
-    { configurable: { thread_id: projectId, sandBoxId } }
+    { configurable: { thread_id: projectId, sandBoxId } },
   );
 
   let lastMsg = firstPass.messages[firstPass.messages.length - 1];
@@ -104,7 +104,7 @@ export async function shipWorkflow({
     });
 
     const shotMap = Object.fromEntries(
-      currentScreenshots.map((s) => [s.label, s.url])
+      currentScreenshots.map((s) => [s.label, s.url]),
     );
 
     // TypeSafe Jev System One visual verification (<40ms)
@@ -122,8 +122,9 @@ export async function shipWorkflow({
           "Based on the captured responsive screenshots, has the user's requested website work been completely and correctly implemented with no visual or layout defects?",
           {
             true: "The website completely fulfills the user's request across all responsive viewports with no broken layout, missing elements, or errors",
-            false: "The website is incomplete, missing requested features, or has layout/responsive bugs",
-          }
+            false:
+              "The website is incomplete, missing requested features, or has layout/responsive bugs",
+          },
         ),
         completion_score: score(
           "How thoroughly does the rendered website match the user's request across all responsive viewports?",
@@ -131,7 +132,7 @@ export async function shipWorkflow({
             "Incomplete: Missing key components or significantly broken",
             "Partially complete: Main structure exists but features or styles need adjustment",
             "Fully complete: Completely satisfies user request with clean responsive styling",
-          ]
+          ],
         ),
       },
     });
@@ -179,7 +180,7 @@ export async function shipWorkflow({
 
       const fixResult = await agent.invoke(
         { messages: [{ role: "user", content: feedbackContent }] },
-        { configurable: { thread_id: projectId, sandBoxId } }
+        { configurable: { thread_id: projectId, sandBoxId } },
       );
 
       lastMsg = fixResult.messages[fixResult.messages.length - 1];

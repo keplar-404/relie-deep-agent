@@ -11,7 +11,9 @@ const allTools = [
 
 function getToolSummary(description: string): string {
   const line = description.split("\n").find((l) => l.includes("What it does:"));
-  return line ? line.replace("What it does:", "").trim() : description.split("\n")[0];
+  return line
+    ? line.replace("What it does:", "").trim()
+    : description.split("\n")[0];
 }
 
 // Score questions for all tools: 0 = Not needed, 1 = Useful, 2 = Essential
@@ -24,9 +26,9 @@ const toolQuestions = Object.fromEntries(
         "Not needed: Unrelated or unnecessary for this request",
         "Useful: Supporting, reading, or exploratory step",
         "Essential: Directly required to complete this task",
-      ]
+      ],
     ),
-  ])
+  ]),
 );
 
 /**
@@ -39,7 +41,7 @@ const toolQuestions = Object.fromEntries(
  */
 export async function routeTools(
   input: string,
-  fileUrls: string[] = []
+  fileUrls: string[] = [],
 ): Promise<string[]> {
   const state: Record<string, string | string[]> = { user_message: input };
   if (fileUrls.length > 0) {
@@ -53,7 +55,10 @@ export async function routeTools(
 
   return Object.entries(res.answers)
     .filter(([, ans]) => (ans as { score: number }).score >= 1.2)
-    .sort((a, b) => (b[1] as { score: number }).score - (a[1] as { score: number }).score)
+    .sort(
+      (a, b) =>
+        (b[1] as { score: number }).score - (a[1] as { score: number }).score,
+    )
     .map(([name]) => name);
 }
 

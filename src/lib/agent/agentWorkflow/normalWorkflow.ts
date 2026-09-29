@@ -59,7 +59,7 @@ export async function normalWorkflow({
   const agent = createAgent(model);
   const result = await agent.invoke(
     { messages: [{ role: "user", content }] },
-    { configurable: { thread_id: projectId, sandBoxId } }
+    { configurable: { thread_id: projectId, sandBoxId } },
   );
 
   const lastMsg = result.messages[result.messages.length - 1];

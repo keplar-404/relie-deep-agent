@@ -68,13 +68,7 @@ export const createAgent = (model = "openrouter:minimax/minimax-m2.7") =>
         keep: { messages: 20 },
       }),
     ],
-    tools: [
-      ...fsTools,
-      assetExtractionTool,
-      sandboxcodeprescreenshottool,
-    ],
+    tools: [...fsTools, assetExtractionTool, sandboxcodeprescreenshottool],
   });
 
 export const agent = createAgent();
-
-

@@ -64,9 +64,17 @@ export function invokeAgent(
               send({ type: "tool_call", name: call.name, input: call.input });
               const status = await call.status;
               if (status === "finished") {
-                send({ type: "tool_done", name: call.name, output: String(await call.output) });
+                send({
+                  type: "tool_done",
+                  name: call.name,
+                  output: String(await call.output),
+                });
               } else if (status === "error") {
-                send({ type: "tool_error", name: call.name, error: String(await call.error) });
+                send({
+                  type: "tool_error",
+                  name: call.name,
+                  error: String(await call.error),
+                });
               }
             }
           })(),
@@ -77,7 +85,9 @@ export function invokeAgent(
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ type: "error", message })}\n\n`),
+          encoder.encode(
+            `data: ${JSON.stringify({ type: "error", message })}\n\n`,
+          ),
         );
       } finally {
         controller.close();
@@ -85,4 +95,3 @@ export function invokeAgent(
     },
   });
 }
-
