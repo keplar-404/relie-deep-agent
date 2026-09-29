@@ -172,12 +172,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("[POST /api/v1/agent error]:", error);
-    return Response.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Internal Server Error",
-      },
-      { status: 500 }
-    );
+    return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }

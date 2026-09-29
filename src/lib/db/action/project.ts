@@ -9,13 +9,11 @@ export async function createProject(input: CreateProject) {
   return row;
 }
 
-export async function getProject(projectId: string, userId?: string) {
-  const conditions = [eq(projects.id, projectId)];
-  if (userId) conditions.push(eq(projects.userId, userId));
+export async function getProject(projectId: string, userId: string) {
   const [row] = await db
     .select()
     .from(projects)
-    .where(and(...conditions))
+    .where(and(eq(projects.id, projectId), eq(projects.userId, userId)))
     .limit(1);
   return row ?? null;
 }

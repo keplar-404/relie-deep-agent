@@ -56,6 +56,12 @@ async function toBuffer(input: FileInput): Promise<{ buffer: Buffer; hint?: stri
     }
     // Remote URL
     if (input.startsWith("http://") || input.startsWith("https://")) {
+      // ponytail: allowlist = S3 endpoint only; expand if other trusted origins are needed
+      const { env } = await import("@/lib/utils/env");
+      const allowed = env.AWS_ENDPOINT_URL_S3?.replace(/\/+$/, "");
+      if (!allowed || !input.startsWith(allowed)) {
+        throw new Error(`URL not in allowlist (SSRF guard): ${input}`);
+      }
       const res = await fetch(input);
       if (!res.ok) throw new Error(`Failed to fetch file from URL: ${input} (${res.status} ${res.statusText})`);
       const arrayBuf = await res.arrayBuffer();

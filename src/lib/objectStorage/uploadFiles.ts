@@ -14,6 +14,11 @@ export async function uploadFiles(files: FileInput[]): Promise<string[]> {
   return Promise.all(
     files.map(async (file) => {
       const cleanKey = file.key.replace(/^\/+/, "");
+      // ponytail: allowlist prefixes = all current callers; add new prefixes here when needed
+      const ALLOWED = ["agents/", "screenshots/", "uploads/"];
+      if (!ALLOWED.some((p) => cleanKey.startsWith(p))) {
+        throw new Error(`S3 key outside allowed namespace: ${cleanKey}`);
+      }
       await s3.send(
         new PutObjectCommand({
           Bucket: BUCKET,

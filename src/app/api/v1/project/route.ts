@@ -44,10 +44,7 @@ export async function POST(req: NextRequest) {
     return Response.json({ project, previewUrl }, { status: 201 });
   } catch (error) {
     console.error("[POST /api/v1/project error]:", error);
-    return Response.json(
-      { error: error instanceof Error ? error.message : "Failed to create project" },
-      { status: 500 }
-    );
+    return Response.json({ error: "Failed to create project" }, { status: 500 });
   }
 }
 
@@ -86,9 +83,6 @@ export async function DELETE(req: NextRequest) {
       : Response.json({ error: "Project not found" }, { status: 404 });
   } catch (error) {
     console.error("[DELETE /api/v1/project error]:", error);
-    return Response.json(
-      { error: error instanceof Error ? error.message : "Failed to delete project" },
-      { status: 500 }
-    );
+    return Response.json({ error: "Failed to delete project" }, { status: 500 });
   }
 }

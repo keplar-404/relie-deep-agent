@@ -1,6 +1,9 @@
 import { NextRequest } from "next/server";
+import { z } from "zod";
 import { currentUser } from "@/lib/auth";
 import { deleteProject } from "@/lib/db/action";
+
+const schema = z.object({ projectId: z.uuid() });
 
 export async function POST(req: NextRequest) {
   const user = await currentUser();
@@ -9,8 +12,8 @@ export async function POST(req: NextRequest) {
   let projectId = req.nextUrl.searchParams.get("projectId");
   if (!projectId) {
     try {
-      const body = await req.json();
-      projectId = body?.projectId;
+      const parsed = schema.safeParse(await req.json());
+      if (parsed.success) projectId = parsed.data.projectId;
     } catch {
       // empty or non-JSON body
     }
