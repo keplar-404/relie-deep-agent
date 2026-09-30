@@ -1,4 +1,4 @@
-import { HomeHeader } from "@/app/_components/home-header";
+import { HomeHeader } from "@/app/_components/HomeHeader";
 import { ZapIcon } from "lucide-react";
 
 export default function Home() {

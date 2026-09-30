@@ -1,5 +1,5 @@
 export { createUser } from "./user";
-export { createProject, getProject } from "./project";
+export { createProject, getProject, listProjects, updateProject } from "./project";
 export { deleteProject } from "./deleteProject";
 export { createChatMessage } from "./chatHistory";
 export { createLlmExecution, createLlmExecutions } from "./llmExecution";
@@ -7,6 +7,7 @@ export { createLlmExecution, createLlmExecutions } from "./llmExecution";
 export {
   createUserSchema,
   createProjectSchema,
+  updateProjectSchema,
   createChatHistorySchema,
   createLlmExecutionSchema,
 } from "../validators";
@@ -14,6 +15,7 @@ export {
 export type {
   CreateUser,
   CreateProject,
+  UpdateProject,
   CreateChatHistory,
   CreateLlmExecution,
   Attachment,

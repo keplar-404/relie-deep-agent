@@ -3,11 +3,13 @@ import { z } from "zod";
 import { currentUser } from "@/lib/auth";
 import { getProject } from "@/lib/db/action";
 import { createChatMessage } from "@/lib/db/action/chatHistory";
-import {
-  createLlmExecutions,
-  type CreateLlmExecution,
-} from "@/lib/db/action";
+import { createLlmExecutions } from "@/lib/db/action";
 import { runWorkflow } from "@/lib/agent/agentWorkflow";
+import {
+  buildUserAttachments,
+  buildAssistantAttachments,
+  buildLlmExecutions,
+} from "./helpers";
 
 const bodySchema = z.object({
   projectId: z.uuid("Invalid project ID format (UUID expected)"),
@@ -31,13 +33,11 @@ const bodySchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  // 1. Single-gate authentication at the API boundary
   const user = await currentUser();
   if (!user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // 2. Validate request payload: message and attached file URLs
   let rawBody: unknown;
   try {
     rawBody = await req.json();
@@ -52,7 +52,6 @@ export async function POST(req: NextRequest) {
 
   const { projectId, message, fileUrls } = parsed.data;
 
-  // 3. Single DB lookup: verify project ownership and retrieve Daytona sandbox ID
   const project = await getProject(projectId, user.id);
   if (!project) {
     return Response.json({ error: "Project not found" }, { status: 404 });
@@ -66,21 +65,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // 4. Save user message to chat history
-    const userAttachments = fileUrls.map((url, i) => {
-      const isImage =
-        /\.(png|jpe?g|webp|gif|svg)$/i.test(url) || url.includes("/image");
-      const name = url.split("/").pop()?.split("?")[0] || `file-${i + 1}`;
-      return {
-        id: crypto.randomUUID(),
-        type: (isImage ? "image" : "file") as "image" | "file",
-        name,
-        url,
-        mimeType: isImage ? "image/png" : "application/octet-stream",
-        size: 0,
-      };
-    });
-
+    const userAttachments = buildUserAttachments(fileUrls);
     await createChatMessage({
       projectId,
       userId: user.id,
@@ -89,7 +74,6 @@ export async function POST(req: NextRequest) {
       attachments: userAttachments,
     });
 
-    // 5. Execute workflow selection router (TypeSafe Jev: "ship" vs "normal")
     const result = await runWorkflow({
       userMessage: message,
       fileUrls,
@@ -99,19 +83,9 @@ export async function POST(req: NextRequest) {
 
     const responseText =
       result.workflow === "ship" ? result.finalResponse : result.response;
-
     const screenshots = result.workflow === "ship" ? result.screenshots : [];
 
-    // 6. Save assistant response to chat history
-    const assistantAttachments = screenshots.map((s) => ({
-      id: crypto.randomUUID(),
-      type: "image" as const,
-      name: `${s.label}.png`,
-      url: s.url,
-      mimeType: "image/png",
-      size: 0,
-    }));
-
+    const assistantAttachments = buildAssistantAttachments(screenshots);
     const assistantMsg = await createChatMessage({
       projectId,
       userId: user.id,
@@ -120,40 +94,9 @@ export async function POST(req: NextRequest) {
       attachments: assistantAttachments,
     });
 
-    // 7. Record LLM execution traces linked to the assistant message
-    const executions: CreateLlmExecution[] = [
-      {
-        chatHistoryId: assistantMsg.id,
-        projectId,
-        sequence: 0,
-        type: "workflow_routing",
-        output: {
-          workflow: result.workflow,
-          model: result.model,
-          tools: result.tools,
-        },
-      },
-    ];
-
-    if (result.workflow === "ship") {
-      executions.push({
-        chatHistoryId: assistantMsg.id,
-        projectId,
-        sequence: 1,
-        type: "visual_verification",
-        output: {
-          success: result.success,
-          iterations: result.iterations,
-          score: result.score,
-          noul: result.noul,
-          screenshots: result.screenshots,
-        },
-      });
-    }
-
+    const executions = buildLlmExecutions(assistantMsg.id, projectId, result);
     await createLlmExecutions(executions);
 
-    // 8. Return response
     return Response.json({
       ok: true,
       workflow: result.workflow,

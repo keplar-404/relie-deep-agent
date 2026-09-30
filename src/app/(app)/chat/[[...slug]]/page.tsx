@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ChevronLeftIcon } from "lucide-react";
-import { ModeToggle } from "@/app/(app)/components/mode-toggle";
+import { ModeToggle } from "@/app/(app)/components/ModeToggle";
 import {
   ResizableHandle,
   ResizablePanel,

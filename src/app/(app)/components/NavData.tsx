@@ -1,19 +1,5 @@
-"use client";
-
 import * as React from "react";
-import { usePathname } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
-import { NavMain, type NavItem } from "./nav-main";
-import { NavUser } from "./nav-user";
-import { TeamSwitcher } from "./team-switcher";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarRail,
-  SidebarSeparator,
-} from "@/components/ui/sidebar";
+import type { NavItem } from "./NavMain";
 import {
   GaugeIcon,
   FolderKanbanIcon,
@@ -33,7 +19,7 @@ import {
 /**
  * Primary navigation — Core product routes matching reference dashboard.
  */
-const NAV_PRIMARY: Omit<NavItem, "isActive">[] = [
+export const NAV_PRIMARY: Omit<NavItem, "isActive">[] = [
   {
     title: "Dashboard",
     url: "/dashboard",
@@ -78,7 +64,7 @@ const NAV_PRIMARY: Omit<NavItem, "isActive">[] = [
 /**
  * System / config navigation — Tools, settings, and accounts with shortcut chips.
  */
-const NAV_SYSTEM: NavItem[] = [
+export const NAV_SYSTEM: NavItem[] = [
   {
     title: "API Keys",
     url: "#",
@@ -111,7 +97,7 @@ const NAV_SYSTEM: NavItem[] = [
 /**
  * Support & info navigation.
  */
-const NAV_FOOTER_LINKS: NavItem[] = [
+export const NAV_FOOTER_LINKS: NavItem[] = [
   {
     title: "Information",
     url: "#",
@@ -125,7 +111,7 @@ const NAV_FOOTER_LINKS: NavItem[] = [
 ];
 
 /** Workspace header data matching reference styling */
-const WORKSPACE = [
+export const WORKSPACE = [
   {
     name: "Organization",
     logo: (
@@ -148,59 +134,3 @@ const WORKSPACE = [
     plan: "Shopify Store Agent",
   },
 ];
-
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { user } = useUser();
-  const pathname = usePathname();
-
-  // Dynamically compute active navigation item based on current URL path
-  const primaryNavItems = React.useMemo<NavItem[]>(() => {
-    return NAV_PRIMARY.map((item) => {
-      let isActive = false;
-      if (item.url === "/dashboard") {
-        isActive = pathname === "/dashboard";
-      } else if (item.url !== "#") {
-        isActive = pathname === item.url || pathname.startsWith(`${item.url}/`);
-      }
-      return {
-        ...item,
-        isActive,
-      };
-    });
-  }, [pathname]);
-
-  const navUser = {
-    name: user?.fullName ?? "Alex Smith",
-    email: user?.primaryEmailAddress?.emailAddress ?? "alex@gmail.com",
-    avatar: user?.imageUrl ?? "",
-  };
-
-  return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader className="border-b border-border/40 py-2.5">
-        <TeamSwitcher teams={WORKSPACE} />
-      </SidebarHeader>
-
-      <SidebarContent className="gap-0 py-1">
-        {/* Core product navigation with dynamic active route indicator */}
-        <NavMain items={primaryNavItems} />
-
-        <SidebarSeparator className="my-1.5 opacity-60" />
-
-        {/* System & Configuration */}
-        <NavMain items={NAV_SYSTEM} />
-
-        <SidebarSeparator className="my-1.5 opacity-60" />
-
-        {/* Info & Account */}
-        <NavMain items={NAV_FOOTER_LINKS} />
-      </SidebarContent>
-
-      <SidebarFooter className="border-t border-border/40 py-2">
-        <NavUser user={navUser} />
-      </SidebarFooter>
-
-      <SidebarRail />
-    </Sidebar>
-  );
-}

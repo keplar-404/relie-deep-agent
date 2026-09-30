@@ -3,7 +3,7 @@
 import * as React from "react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
-import { ModeToggle } from "@/app/(app)/components/mode-toggle";
+import { ModeToggle } from "@/app/(app)/components/ModeToggle";
 import { CalendarIcon, GaugeIcon } from "lucide-react";
 
 export function DashboardHeader() {

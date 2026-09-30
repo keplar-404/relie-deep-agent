@@ -1,62 +1,94 @@
-import Link from "next/link";
-import { AppSidebar } from "@/app/(app)/components/app-sidebar";
-import { ModeToggle } from "@/app/(app)/components/mode-toggle";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
-import { Separator } from "@/components/ui/separator";
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
-import { PlusIcon } from "lucide-react";
+"use client";
 
-/**
- * Projects page — Shares the exact same sidebar, theme, and layout shell as Dashboard.
- */
+import { useState, useMemo } from "react";
+import { AppSidebar } from "@/app/(app)/components/AppSidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { ProjectDialog } from "./components/ProjectDialog";
+import { DeleteDialog } from "./components/DeleteDialog";
+import { ProjectsHeader } from "./components/ProjectsHeader";
+import { ProjectsErrorAlert } from "./components/ProjectsErrorAlert";
+import { ProjectsToolbar, type Tab } from "./components/ProjectsToolbar";
+import { ProjectsGrid } from "./components/ProjectsGrid";
+import { useProjects } from "./hooks/useProjects";
+
 export default function ProjectsPage() {
+  const [activeTab, setActiveTab] = useState<Tab>("My Projects");
+  const [search, setSearch] = useState("");
+
+  const {
+    projects,
+    isLoading,
+    pageError,
+    setPageError,
+    activeProject,
+    setActiveProject,
+    deletingProject,
+    setDeletingProject,
+    fetchProjects,
+    handleConfirmDelete,
+    handleSaveSuccess,
+  } = useProjects();
+
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return projects;
+    return projects.filter((p) => p.title.toLowerCase().includes(query));
+  }, [projects, search]);
+
   return (
     <SidebarProvider>
       <AppSidebar />
-      <SidebarInset className="bg-background text-foreground">
-        <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border/70 px-4">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-1 h-4 opacity-50" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Projects</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
-          <div className="flex items-center gap-2">
-            <ModeToggle />
-          </div>
-        </header>
+      <SidebarInset className="bg-background text-foreground overflow-y-auto">
+        <ProjectsHeader />
 
-        <div className="flex flex-1 items-center justify-center p-8">
-          <div className="text-center space-y-3 max-w-sm">
-            <p className="text-lg font-semibold">Projects</p>
-            <p className="text-sm text-muted-foreground">
-              Manage your workspaces and start an autonomous build session.
-            </p>
-            <div className="pt-2">
-              <Link
-                href="/chat"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors shadow-xs"
-              >
-                <PlusIcon className="size-4" />
-                <span>Open Chat Workspace</span>
-              </Link>
-            </div>
+        <main>
+          <ProjectsErrorAlert
+            error={pageError}
+            onRetry={fetchProjects}
+            onDismiss={() => setPageError(null)}
+          />
+
+          <ProjectsToolbar
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            search={search}
+            onSearchChange={setSearch}
+            onNewProject={() => setActiveProject(null)}
+          />
+
+          <div className="px-6 pb-12">
+            <ProjectsGrid
+              activeTab={activeTab}
+              isLoading={isLoading}
+              projects={filtered}
+              search={search}
+              onEdit={(p) =>
+                setActiveProject({
+                  id: p.id,
+                  name: p.title,
+                  description: p.description,
+                  image: p.image,
+                })
+              }
+              onDelete={(p) => setDeletingProject(p)}
+              onCreateNew={() => setActiveProject(null)}
+            />
           </div>
-        </div>
+        </main>
+
+        <ProjectDialog
+          open={activeProject !== undefined}
+          project={activeProject}
+          onOpenChange={(open) => !open && setActiveProject(undefined)}
+          onSuccess={handleSaveSuccess}
+        />
+
+        <DeleteDialog
+          open={!!deletingProject}
+          project={deletingProject}
+          onOpenChange={(open) => !open && setDeletingProject(null)}
+          onConfirm={handleConfirmDelete}
+        />
       </SidebarInset>
     </SidebarProvider>
   );

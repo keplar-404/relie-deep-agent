@@ -26,11 +26,23 @@ export type CreateUser = z.infer<typeof createUserSchema>;
 // --- projects ---
 export const createProjectSchema = z.object({
   userId: uuid,
-  name: z.string().min(1).max(255),
-  description: z.string().optional(),
+  name: z.string().min(1, "Project name is required").max(255),
+  description: z.string().max(1000).optional(),
+  image: z.string().optional(),
+  logo: z.string().max(255).optional(),
   sandboxId: z.string().max(255).optional(),
 });
 export type CreateProject = z.infer<typeof createProjectSchema>;
+
+export const updateProjectSchema = z.object({
+  id: uuid,
+  userId: uuid,
+  name: z.string().min(1).max(255).optional(),
+  description: z.string().max(1000).optional(),
+  image: z.string().optional(),
+  logo: z.string().max(255).optional(),
+});
+export type UpdateProject = z.infer<typeof updateProjectSchema>;
 
 // --- chat_history ---
 export const chatRole = z.enum(["system", "user", "assistant", "tool"]);

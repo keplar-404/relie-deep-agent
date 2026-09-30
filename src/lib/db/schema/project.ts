@@ -8,6 +8,9 @@ export const projects = pgTable("projects", {
     .references(() => users.id, { onDelete: "cascade" }),
   name: varchar({ length: 255 }).notNull(),
   description: text(),
+  image: text().default("/sass.jpg"),
+  logo: varchar({ length: 255 }),
   sandboxId: varchar({ length: 255 }),
   createdAt: timestamp().notNull().defaultNow(),
+  updatedAt: timestamp().notNull().defaultNow(),
 });

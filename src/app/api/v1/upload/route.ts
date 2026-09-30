@@ -41,8 +41,8 @@ export async function POST(req: NextRequest) {
       })
     );
 
-    const endpoint = (env.AWS_ENDPOINT_URL_S3 || "").replace(/\/+$/, "");
-    const url = `${endpoint}/${BUCKET}/${key}`;
+    // Return accessible app route for streaming the image
+    const url = `/api/v1/file?key=${encodeURIComponent(key)}`;
 
     return Response.json({ url, key });
   } catch (error) {
