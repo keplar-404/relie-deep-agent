@@ -15,11 +15,11 @@ export type FilterTableLabels = {
   columns: { task: string; date: string; status: string; owner: string };
 };
 
-const FILTERS: { key: "all" | Status; label: string; dot?: string; count: number }[] = [
-  { key: "all", label: "All", count: 5 },
-  { key: "todo", label: "To do", dot: "#f59e0b", count: 2 },
-  { key: "progress", label: "In Progress", dot: "#0284c7", count: 2 },
-  { key: "done", label: "Completed", dot: "#10b981", count: 1 },
+const FILTER_KEYS: { key: "all" | Status; label: string; dot?: string }[] = [
+  { key: "all", label: "All" },
+  { key: "todo", label: "To do", dot: "#f59e0b" },
+  { key: "progress", label: "In Progress", dot: "#0284c7" },
+  { key: "done", label: "Completed", dot: "#10b981" },
 ];
 
 const ROWS: TableRow[] = [
@@ -53,29 +53,41 @@ export type FilterTableProps = {
   rows?: TableRow[];
   labels?: FilterTableLabels;
   variant?: string;
+  /** Extra classes on the outer container. */
+  className?: string;
+  /** Fired when the active filter changes. */
+  onFilter?: (key: "all" | Status) => void;
 };
 
 export function FilterTable({
   rows = ROWS,
   labels = LABELS,
+  className,
+  onFilter,
 }: FilterTableProps = {}) {
   const [filter, setFilter] = useState<"all" | Status>("all");
 
+  // Derive counts from the actual rows so they stay correct with custom data
+  const filters = FILTER_KEYS.map((f) => ({
+    ...f,
+    count: f.key === "all" ? rows.length : rows.filter((r) => r.status === f.key).length,
+  }));
+
   return (
-    <div className="w-full max-w-[420px]">
+    <div className={`w-full${className ? ` ${className}` : ""}`}>
       {/* filter chips */}
       <div
         className="-mx-1 mb-1 flex items-center gap-1 overflow-x-auto px-1 py-1"
         style={{ scrollbarWidth: "none" }}
       >
-        {FILTERS.map((f) => {
+        {filters.map((f) => {
           const active = filter === f.key;
           return (
             <button
               key={f.key}
               type="button"
               aria-pressed={active}
-              onClick={() => setFilter(f.key)}
+              onClick={() => { setFilter(f.key); onFilter?.(f.key); }}
               className={`flex h-[26px] shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[12px]
                 font-medium transition-[background-color,box-shadow,color] duration-200
                 ${
@@ -105,7 +117,7 @@ export function FilterTable({
         tabIndex={0}
         style={{ scrollbarWidth: "none" }}
       >
-        <div className="min-w-[420px]">
+        <div className="min-w-0 w-full overflow-x-auto" style={{ scrollbarWidth: "none" }}>
           <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,0.6fr)_minmax(0,0.95fr)_minmax(0,0.9fr)] border-b border-border/80 text-[12.5px] font-medium text-muted-foreground">
             <span className="border-r border-border/80 px-3 py-2">{labels.columns.task}</span>
             <span className="border-r border-border/80 px-3 py-2">{labels.columns.date}</span>

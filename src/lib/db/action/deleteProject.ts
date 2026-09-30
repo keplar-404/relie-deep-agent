@@ -20,27 +20,38 @@ export async function deleteProject({
 
   if (!project) return false;
 
-  // 1. Daytona cloud sandbox
+  // Run external cleanups (Daytona, S3 files, Checkpointer) concurrently
+  const cleanupTasks: Promise<unknown>[] = [];
+
   if (project.sandboxId) {
-    try {
-      const sb = await daytona.get(project.sandboxId);
-      await daytona.delete(sb);
-    } catch {
-      // ponytail: ignore if already deleted or 404
-    }
+    cleanupTasks.push(
+      daytona
+        .get(project.sandboxId)
+        .then((sb) => daytona.delete(sb))
+        .catch((err) => {
+          console.error(
+            `[deleteProject] Failed to delete Daytona sandbox "${project.sandboxId}":`,
+            err?.message || err,
+          );
+        }),
+    );
   }
 
-  // 2. Neon S3 project files (user uploads, agent tool files, screenshots)
-  await deleteProjectFiles({ projectId, userId, sandboxId: project.sandboxId });
+  cleanupTasks.push(
+    deleteProjectFiles({ projectId, userId, sandboxId: project.sandboxId }).catch((err) => {
+      console.error("[deleteProject] Failed to delete S3 files:", err?.message || err);
+    }),
+  );
 
-  // 3. LangGraph checkpointer thread checkpoints
-  try {
-    await checkpointer.deleteThread(projectId);
-  } catch {
-    // ponytail: ignore if thread was uninitialized
-  }
+  cleanupTasks.push(
+    checkpointer.deleteThread(projectId).catch((err) => {
+      console.error("[deleteProject] Failed to delete checkpointer thread:", err?.message || err);
+    }),
+  );
 
-  // 4. Postgres DB project row (cascades chat_history & llm_executions via schema FK)
+  await Promise.allSettled(cleanupTasks);
+
+  // Postgres DB project row (cascades chat_history & llm_executions via schema FK)
   await db
     .delete(projects)
     .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));

@@ -1,8 +1,28 @@
-import { Image, Daytona } from "@daytona/sdk";
+import { Image, Daytona, DaytonaNotFoundError, DaytonaConflictError } from "@daytona/sdk";
 import { env } from "@/lib/utils/env";
 
 export const daytona = new Daytona({ apiKey: env.DAYTONA_API_KEY });
 const SNAPSHOT = "react-vite-bun-v3";
+
+function isSnapshotNotFoundError(error: unknown): boolean {
+  if (error instanceof DaytonaNotFoundError) {
+    return true;
+  }
+  if (typeof error === "object" && error !== null) {
+    const err = error as { statusCode?: number; status?: number; message?: string };
+    if (err.statusCode === 404 || err.status === 404) {
+      return true;
+    }
+    if (
+      typeof err.message === "string" &&
+      (err.message.toLowerCase().includes("snapshot") ||
+        err.message.toLowerCase().includes("not found"))
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
 
 async function createSnapShot() {
   try {
@@ -14,7 +34,6 @@ async function createSnapShot() {
         "bunx --bun playwright install --with-deps chromium",
         "git clone https://github.com/keplar-404/template-react-project.git /home/daytona/app",
         "cd /home/daytona/app && bun install"
-        
       ),
       entrypoint: [
         "bun",
@@ -30,7 +49,10 @@ async function createSnapShot() {
       ],
     });
   } catch (e: unknown) {
-    if (typeof e === "object" && e !== null && "statusCode" in e && (e as { statusCode: number }).statusCode === 409) {
+    if (
+      e instanceof DaytonaConflictError ||
+      (typeof e === "object" && e !== null && "statusCode" in e && (e as { statusCode: number }).statusCode === 409)
+    ) {
       return; // ponytail: 409 = already exists, swallowed on purpose
     }
     throw e;
@@ -50,8 +72,13 @@ async function sandBoxInit() {
 export default async function createSandBox() {
   try {
     return await sandBoxInit();
-  } catch {
-    await createSnapShot();
-    return await sandBoxInit();
+  } catch (error: unknown) {
+    if (isSnapshotNotFoundError(error)) {
+      console.warn(`[createSandBox] Snapshot "${SNAPSHOT}" not found. Creating snapshot...`);
+      await createSnapShot();
+      return await sandBoxInit();
+    }
+    throw error;
   }
 }
+

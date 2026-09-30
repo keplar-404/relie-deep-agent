@@ -98,6 +98,7 @@ export function StreamingText({
   fill = false,
   onDone,
   onFollowUp,
+  className,
 }: {
   variant?: string;
   /** the streamed tokens; `cite` tokens render an inline source chip */
@@ -112,6 +113,8 @@ export function StreamingText({
   loop?: boolean;
   /** fill the parent width instead of the gallery's fixed measure */
   fill?: boolean;
+  /** extra classes on the outer container */
+  className?: string;
   onDone?: () => void;
   /** fired when a follow-up prompt is chosen */
   onFollowUp?: (text: string, index: number) => void;
@@ -134,7 +137,7 @@ export function StreamingText({
   }, [count, done, loop, content.length, onDone]);
 
   return (
-    <div className={fill ? "w-full" : "min-h-[15.5rem] w-full max-w-95"}>
+    <div className={fill ? `w-full${className ? ` ${className}` : ""}` : `min-h-[15.5rem] w-full max-w-95${className ? ` ${className}` : ""}`}>
       <p className="text-[13px] leading-relaxed text-foreground">
         {content.slice(0, count).map((token, i) =>
           token.cite ? (

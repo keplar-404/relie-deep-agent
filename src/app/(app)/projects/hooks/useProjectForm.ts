@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -29,51 +30,35 @@ export function useProjectForm({
   onSuccess,
   onOpenChange,
 }: UseProjectFormOptions) {
+  const router = useRouter();
   const isEdit = Boolean(project);
   const [serverError, setServerError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [previewImage, setPreviewImage] = useState<string>(
-    project?.image || "/sass.jpg"
-  );
+  const previewImage = project?.image || "/sass.jpg";
 
   const form = useForm<ProjectFormData>({
     resolver: zodResolver(projectFormSchema),
     defaultValues: {
       name: project?.name || "",
       description: project?.description || "",
-      image: project?.image || "/sass.jpg",
+      image: previewImage,
     },
   });
 
-  const { reset, setValue, setError } = form;
+  const { reset, setError } = form;
 
   useEffect(() => {
     if (open) {
-      const initialImage = project?.image || "/sass.jpg";
       reset({
         name: project?.name || "",
         description: project?.description || "",
-        image: initialImage,
+        image: project?.image || "/sass.jpg",
       });
-      setPreviewImage(initialImage);
       setServerError(null);
-      setIsUploadingImage(false);
     }
   }, [open, project, reset]);
 
-  const handleImageChange = (url: string) => {
-    setValue("image", url, { shouldValidate: true, shouldDirty: true });
-    setPreviewImage(url);
-  };
-
-  const handlePreviewChange = (url: string) => {
-    setPreviewImage(url);
-  };
-
   const onSubmit = async (data: ProjectFormData) => {
-    if (isUploadingImage) return;
-
     setIsSubmitting(true);
     setServerError(null);
 
@@ -103,6 +88,10 @@ export function useProjectForm({
 
       onSuccess(json.project);
       onOpenChange(false);
+
+      if (!isEdit && json.project?.id) {
+        router.push(`/project/${json.project.id}`);
+      }
     } catch (err) {
       setServerError(err instanceof Error ? err.message : "Network error. Please try again.");
     } finally {
@@ -116,11 +105,7 @@ export function useProjectForm({
     serverError,
     setServerError,
     isSubmitting,
-    isUploadingImage,
-    setIsUploadingImage,
     previewImage,
-    handleImageChange,
-    handlePreviewChange,
     handleSubmit: form.handleSubmit(onSubmit),
   };
 }

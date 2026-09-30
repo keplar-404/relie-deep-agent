@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,15 +25,19 @@ export function ProjectCard({
   onEdit?: (project: Project) => void;
   onDelete?: (project: Project) => void;
 }) {
+  const router = useRouter();
   const [imgSrc, setImgSrc] = useState(() => {
     if (!project.image || project.image.startsWith("blob:")) return "/sass.jpg";
     return project.image;
   });
 
   return (
-    <article className="project-card group cursor-pointer overflow-hidden rounded-md border border-border/40 bg-card transition-all duration-200 hover:border-border/80 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/20">
-      {/* Preview image with fallback */}
-      <div className="relative aspect-video overflow-hidden bg-muted">
+    <article className="project-card group overflow-hidden rounded-md border border-border/40 bg-card transition-all duration-200 hover:border-border/80 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/20">
+      {/* Preview image with fallback — navigates to project */}
+      <div
+        onClick={() => router.push(`/project/${project.id}`)}
+        className="relative aspect-video overflow-hidden bg-muted cursor-pointer"
+      >
         <Image
           src={imgSrc}
           alt={project.title}
@@ -40,7 +45,7 @@ export function ProjectCard({
           height={360}
           priority={priority}
           loading={priority ? "eager" : "lazy"}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.02]"
           onError={() => setImgSrc("/sass.jpg")}
           unoptimized
         />
@@ -50,8 +55,11 @@ export function ProjectCard({
       {/* Meta section */}
       <div className="px-3.5 py-3">
         <div className="flex items-center justify-between gap-2">
-          {/* Title */}
-          <span className="flex-1 truncate text-sm font-medium text-foreground">
+          {/* Title — navigates to project */}
+          <span
+            onClick={() => router.push(`/project/${project.id}`)}
+            className="flex-1 truncate text-sm font-medium text-foreground cursor-pointer hover:underline"
+          >
             {project.title}
           </span>
 

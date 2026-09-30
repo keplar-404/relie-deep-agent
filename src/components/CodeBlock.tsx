@@ -135,6 +135,8 @@ export type CodeBlockProps = {
   labels?: Partial<CodeBlockLabels>;
   /** Called with the copied text after a successful copy. */
   onCopy?: (text: string) => void;
+  /** Extra classes applied to the outer container (override max-width, margin, etc.). */
+  className?: string;
 };
 
 export function CodeBlock({
@@ -145,6 +147,7 @@ export function CodeBlock({
   filename = FILE,
   labels,
   onCopy,
+  className,
 }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
   const isDiff = variant === "Diff";
@@ -165,7 +168,7 @@ export function CodeBlock({
   const removed = diff.filter((r) => r.type === "del").length;
 
   return (
-    <div className="w-full max-w-[420px] overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+    <div className={`w-full overflow-hidden rounded-xl border border-border bg-card shadow-sm${className ? ` ${className}` : ""}`}>
       {/* header — file · (diff stat | copy) */}
       <div className="flex h-11 items-center gap-2 border-b border-border px-4 text-[12.5px]">
         <span className="inline-flex min-w-0 items-center gap-[7px]">

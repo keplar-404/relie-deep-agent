@@ -97,6 +97,8 @@ export function ThinkingState({
   active,
   done,
   icon,
+  className,
+  query,
 }: {
   variant?: string;
   onSettled?: () => void;
@@ -104,8 +106,12 @@ export function ThinkingState({
   rows?: ThinkingRow[];
   active?: string;
   done?: string;
+  /** override the search query shown in the Search variant */
+  query?: string;
   /** override the header glyph (defaults to the sparkle) */
   icon?: ReactNode;
+  /** extra classes on the outer container */
+  className?: string;
 }) {
   const stage = useSequence(STAGES);
   const [manualExpanded, setManualExpanded] = useState<boolean | null>(null);
@@ -116,6 +122,7 @@ export function ThinkingState({
     rows: rows ?? base.rows,
     active: active ?? base.active,
     done: done ?? base.done,
+    query: query ?? base.query,
   };
   const autoExpanded = stage >= 1 && stage < 4;
   const expanded = manualExpanded ?? autoExpanded;
@@ -138,7 +145,7 @@ export function ThinkingState({
   return (
     <div
       key={variant}
-      className="flex w-full max-w-95 flex-col"
+      className={`flex w-full max-w-95 flex-col${className ? ` ${className}` : ""}`}
       style={{
         minHeight: working || expanded ? 176 : undefined,
         transition: "min-height 400ms cubic-bezier(0.23,1,0.32,1)",

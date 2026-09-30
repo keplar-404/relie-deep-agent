@@ -433,7 +433,7 @@ function InputPicker({
   );
 }
 
-export function RecordsTable({ rows = INITIAL_ROWS, fill = false }: { rows?: RecordRow[]; fill?: boolean; variant?: string }) {
+export function RecordsTable({ rows = INITIAL_ROWS, fill = false, className }: { rows?: RecordRow[]; fill?: boolean; variant?: string; /** Extra classes on the outer container. */ className?: string }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "name", dir: 1 });
   const [columnWidths, setColumnWidths] = useState(DEFAULT_COLUMN_WIDTHS);
@@ -630,7 +630,7 @@ export function RecordsTable({ rows = INITIAL_ROWS, fill = false }: { rows?: Rec
   const tableWidth = columnWidths.company + columnWidths.categories + columnWidths.last + columnWidths.strength + columnWidths.links + (aiAdded ? columnWidths.ai : 0) + actionColumnWidth;
 
   return (
-    <div className={`records-shell${fill ? " is-fill" : ""}`}>
+    <div className={`records-shell${fill ? " is-fill" : ""}${className ? ` ${className}` : ""}`}>
       <div
         className="records-scroll"
         tabIndex={0}

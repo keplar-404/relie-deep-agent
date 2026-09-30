@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { ImageLightbox } from "@/components/primitives/ImageLightbox";
 
 /* ─────────────────────────────────────────────────────────
  * TOOL CHIPS
@@ -42,6 +43,8 @@ export type ToolStep = {
   mono: boolean;
   detailMono: boolean;
   detail: ToolDetailLine[];
+  /** Optional images shown as 60×60 thumbnails in the expanded detail. Click to open lightbox. */
+  images?: string[];
 };
 
 export type ToolDiff = { file: string; add: number; del: number };
@@ -153,6 +156,8 @@ export function ToolChips({
   const [step, setStep] = useState(0);
   const [open, setOpen] = useState(true);
   const [openRows, setOpenRows] = useState<Set<string>>(new Set());
+  const [showAllDiffs, setShowAllDiffs] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<{ src: string; name: string } | null>(null);
   /* Rendered in a body portal so animated/translated reply wrappers cannot
    * redefine the fixed-position coordinate system. */
   const [preview, setPreview] = useState<{
@@ -306,6 +311,29 @@ export function ToolChips({
                   >
                     <div className="min-h-0 overflow-hidden">
                       <div className="mt-0.5 mb-1 ml-2 flex flex-col gap-0.5 border-l border-border py-0.5 pl-3.5">
+                        {/* image thumbnails */}
+                        {((row.images?.length ?? 0) > 0 || /\.(png|jpg|jpeg|gif|webp)$/i.test(row.chip)) && (
+                          <div className="mb-2 flex flex-wrap gap-1.5">
+                            {(row.images ?? ["/placeholder-chart.svg"]).map((src, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => setLightboxSrc({ src, name: row.images ? `image-${idx + 1}` : row.chip })}
+                                className="size-[60px] shrink-0 overflow-hidden rounded-lg border border-border/60 bg-muted/40 cursor-pointer transition-all hover:scale-105 hover:shadow-md hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                                aria-label={`View ${row.chip} image ${idx + 1}`}
+                              >
+                                {src.startsWith("data:") || src.startsWith("http") || src.startsWith("/") ? (
+                                  <img src={src} alt={row.chip} className="size-full object-cover" />
+                                ) : (
+                                  <svg viewBox="0 0 60 60" className="size-full">
+                                    <polyline points="5,50 18,28 30,35 42,12 54,20" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round" />
+                                    <line x1="5" y1="55" x2="55" y2="55" stroke="var(--border)" strokeWidth="1" />
+                                  </svg>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                         {row.detail.map((line, idx) => (
                           <span
                             key={idx}
@@ -325,50 +353,57 @@ export function ToolChips({
           </div>
 
           {/* file-diff chips */}
-          {step >= total && (
-            <div className="mt-2.5 flex max-w-full flex-wrap gap-1.5 border-t border-border pt-2.5">
-              {diffs.map((d, i) => (
-                <span
-                  key={d.file}
-                  data-diffchip
-                  className="relative"
-                  onMouseEnter={openPreview(d.file)}
-                  onMouseLeave={closePreview(d.file)}
-                >
+          {step >= total && (() => {
+            const visible = showAllDiffs ? diffs : diffs.slice(0, 1);
+            const hiddenCount = diffs.length - visible.length;
+            return (
+              <div className="mt-2.5 flex max-w-full flex-wrap gap-1.5 border-t border-border pt-2.5">
+                {visible.map((d, i) => (
+                  <span
+                    key={d.file}
+                    data-diffchip
+                    className="relative"
+                    onMouseEnter={openPreview(d.file)}
+                    onMouseLeave={closePreview(d.file)}
+                  >
+                    <button
+                      type="button"
+                      aria-expanded={preview?.file === d.file}
+                      aria-label={`Show diff for ${d.file}`}
+                      onFocus={openPreview(d.file)}
+                      onBlur={closePreview(d.file)}
+                      className="inline-flex h-7 max-w-full items-center gap-2 rounded-md border border-border
+                        bg-card px-2 font-mono text-[11.5px] text-foreground shadow-xs
+                        transition-colors duration-100 hover:bg-muted cursor-pointer"
+                      style={{ animation: `pop-in 250ms cubic-bezier(0.23,1,0.32,1) ${i * 80}ms both` }}
+                    >
+                      <span className="min-w-0 truncate">{d.file}</span>
+                      <span className="shrink-0 text-emerald-500 tabular-nums">+{d.add}</span>
+                      {d.del > 0 && <span className="shrink-0 text-destructive tabular-nums">−{d.del}</span>}
+                    </button>
+                  </span>
+                ))}
+                {hiddenCount > 0 ? (
                   <button
                     type="button"
-                    aria-expanded={preview?.file === d.file}
-                    aria-label={`Show diff for ${d.file}`}
-                    onFocus={openPreview(d.file)}
-                    onBlur={closePreview(d.file)}
-                    className="inline-flex h-7 max-w-full items-center gap-2 rounded-md border border-border
-                      bg-card px-2 font-mono text-[11.5px] text-foreground shadow-xs
-                      transition-colors duration-100 hover:bg-muted cursor-pointer"
-                    style={{
-                      animation: `pop-in 250ms cubic-bezier(0.23,1,0.32,1) ${i * 80}ms both`,
-                    }}
+                    onClick={() => setShowAllDiffs(true)}
+                    className="inline-flex h-7 items-center rounded-md border border-dashed border-border px-2 font-mono text-[11.5px] text-muted-foreground transition-colors hover:border-border hover:bg-muted hover:text-foreground cursor-pointer"
+                    style={{ animation: `fade-in 300ms ease-out ${visible.length * 80}ms both` }}
                   >
-                    <span className="min-w-0 truncate">{d.file}</span>
-                    <span className="shrink-0 text-emerald-500 tabular-nums">+{d.add}</span>
-                    {d.del > 0 && (
-                      <span className="shrink-0 text-destructive tabular-nums">−{d.del}</span>
-                    )}
+                    +{hiddenCount} more
                   </button>
-                </span>
-              ))}
-              <button
-                type="button"
-                className="inline-flex h-7 items-center rounded-md px-1.5 font-mono text-[11.5px] text-muted-foreground/80
-                  underline decoration-transparent underline-offset-2 transition-colors duration-100
-                  hover:text-foreground hover:decoration-current cursor-pointer"
-                style={{
-                  animation: `fade-in 300ms ease-out ${diffs.length * 80}ms both`,
-                }}
-              >
-                {copy.more}
-              </button>
-            </div>
-          )}
+                ) : diffs.length > 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllDiffs(false)}
+                    className="inline-flex h-7 items-center rounded-md px-1.5 font-mono text-[11.5px] text-muted-foreground/70 transition-colors hover:text-foreground cursor-pointer"
+                  >
+                    show less
+                  </button>
+                ) : null}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
@@ -421,6 +456,11 @@ export function ToolChips({
           </div>,
           document.body,
         )}
+      <ImageLightbox
+        src={lightboxSrc?.src ?? null}
+        name={lightboxSrc?.name}
+        onClose={() => setLightboxSrc(null)}
+      />
     </div>
   );
 }

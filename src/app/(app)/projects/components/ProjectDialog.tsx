@@ -15,7 +15,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircleIcon, Loader2Icon, SparklesIcon, PencilIcon } from "lucide-react";
 import type { ProjectRecord } from "../types";
 import { CardPreview } from "./CardPreview";
-import { ThumbnailUploader } from "./ThumbnailUploader";
 import { useProjectForm } from "../hooks/useProjectForm";
 
 interface ProjectDialogProps {
@@ -37,13 +36,8 @@ export function ProjectDialog({
     handleSubmit,
     isEdit,
     serverError,
-    setServerError,
     isSubmitting,
-    isUploadingImage,
-    setIsUploadingImage,
     previewImage,
-    handleImageChange,
-    handlePreviewChange,
     formState: { errors },
   } = useProjectForm({ project, open, onSuccess, onOpenChange });
 
@@ -62,7 +56,9 @@ export function ProjectDialog({
             <DialogTitle>{isEdit ? "Edit Project" : "Create New Project"}</DialogTitle>
           </div>
           <DialogDescription>
-            {isEdit ? "Update your AI agent workspace name, thumbnail, or description." : "Configure your AI agent workspace with a name, description, and thumbnail."}
+            {isEdit
+              ? "Update your AI agent workspace name or description."
+              : "Configure your AI agent workspace with a name and description."}
           </DialogDescription>
         </DialogHeader>
 
@@ -101,14 +97,6 @@ export function ProjectDialog({
             />
           </div>
 
-          <ThumbnailUploader
-            isUploading={isUploadingImage}
-            onUploadingChange={setIsUploadingImage}
-            onImageChange={handleImageChange}
-            onPreviewChange={handlePreviewChange}
-            onError={setServerError}
-          />
-
           <CardPreview control={control} previewImage={previewImage} />
 
           <DialogFooter>
@@ -117,14 +105,14 @@ export function ProjectDialog({
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
-              disabled={isSubmitting || isUploadingImage}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
             <Button
               type="submit"
               size="sm"
-              disabled={isSubmitting || isUploadingImage}
+              disabled={isSubmitting}
               className="gap-1.5 font-medium cursor-pointer"
             >
               {isSubmitting ? (
