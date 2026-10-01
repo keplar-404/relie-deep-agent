@@ -1,11 +1,13 @@
 import { fsTools } from "@/lib/agent/tools/fsOperations";
 import { assetExtractionTool } from "@/lib/agent/tools/assetExtraction";
+import { imageGenerationTool } from "@/lib/agent/tools/imageGenerationTool";
 import { sandboxcodeprescreenshottool } from "@/lib/agent/tools/sandboxcodeprescreenshottool";
 import { jev, score } from "./index";
 
 const allTools = [
   ...fsTools,
   assetExtractionTool,
+  imageGenerationTool,
   sandboxcodeprescreenshottool,
 ];
 

@@ -1,4 +1,4 @@
-import { daytona } from "../index";
+import { getSandboxInstance } from "../index";
 import { resolvePath } from "./resolvePath";
 
 /** Writes or updates a single UTF-8 text file (source code, JSON, Markdown, CSS, config) in the sandbox workspace. */
@@ -12,7 +12,7 @@ export async function uploadFile({
   sandBoxId: string;
 }) {
   try {
-    const sandbox = await daytona.get(sandBoxId);
+    const sandbox = await getSandboxInstance(sandBoxId);
     const buffer = typeof content === "string" ? Buffer.from(content) : content;
     const resolvedPath = resolvePath(path);
     await sandbox.fs.uploadFile(buffer, resolvedPath);

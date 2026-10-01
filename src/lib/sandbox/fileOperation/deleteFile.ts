@@ -1,4 +1,4 @@
-import { daytona } from "../index";
+import { getSandboxInstance } from "../index";
 import { resolvePath } from "./resolvePath";
 
 /** Deletes a file or directory (recursively if specified) from the sandbox workspace. Enforces safety guards and handles edge cases. */
@@ -12,7 +12,7 @@ export async function deleteFile({
   recursive?: boolean;
 }) {
   try {
-    const sandbox = await daytona.get(sandBoxId);
+    const sandbox = await getSandboxInstance(sandBoxId);
     const resolvedPath = resolvePath(path);
 
     // Safety Guard 1: Protect workspace root directory

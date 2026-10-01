@@ -1,5 +1,5 @@
 import type { FileDownloadRequest } from "@daytona/sdk";
-import { daytona } from "../index";
+import { getSandboxInstance } from "../index";
 import { resolvePath } from "./resolvePath";
 
 /** Reads UTF-8 text content from multiple files simultaneously in the sandbox workspace (defaults to lines 1-200 per file). */
@@ -11,7 +11,7 @@ export async function readFilesText({
   sandBoxId: string;
 }) {
   try {
-    const sandbox = await daytona.get(sandBoxId);
+    const sandbox = await getSandboxInstance(sandBoxId);
     const requests: FileDownloadRequest[] = files.map((f) => ({
       source: resolvePath(f.source),
     }));

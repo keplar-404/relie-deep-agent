@@ -40,6 +40,13 @@ export async function currentUser() {
       name,
       image: profile.imageUrl,
     })
+    .onConflictDoUpdate({
+      target: users.clerkId,
+      set: {
+        name,
+        image: profile.imageUrl,
+      },
+    })
     .returning();
 
   return created;

@@ -17,10 +17,30 @@ export function buildUserAttachments(fileUrls: string[]) {
   });
 }
 
+export function extractGeneratedImages(content: string): { name: string; url: string }[] {
+  const images: { name: string; url: string }[] = [];
+  const mdRegex = /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g;
+  let match: RegExpExecArray | null;
+  while ((match = mdRegex.exec(content)) !== null) {
+    images.push({ name: match[1] || "generated-image.png", url: match[2] });
+  }
+
+  const s3Regex = /(https?:\/\/[^\s"'<>]+\/generated\/[^\s"'<>]+)/g;
+  while ((match = s3Regex.exec(content)) !== null) {
+    if (!images.some((img) => img.url === match![1])) {
+      const fileName = match[1].split("/").pop() || "generated-asset.png";
+      images.push({ name: fileName, url: match[1] });
+    }
+  }
+
+  return images;
+}
+
 export function buildAssistantAttachments(
-  screenshots: { label: string; url: string }[]
+  screenshots: { label: string; url: string }[] = [],
+  generatedImages: { name: string; url: string }[] = []
 ) {
-  return screenshots.map((s) => ({
+  const screenshotAttachments = screenshots.map((s) => ({
     id: crypto.randomUUID(),
     type: "image" as const,
     name: `${s.label}.png`,
@@ -28,6 +48,17 @@ export function buildAssistantAttachments(
     mimeType: "image/png",
     size: 0,
   }));
+
+  const generatedAttachments = generatedImages.map((g) => ({
+    id: crypto.randomUUID(),
+    type: "image" as const,
+    name: g.name,
+    url: g.url,
+    mimeType: "image/png",
+    size: 0,
+  }));
+
+  return [...screenshotAttachments, ...generatedAttachments];
 }
 
 export function buildLlmExecutions(

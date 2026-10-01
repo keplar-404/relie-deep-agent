@@ -1,4 +1,4 @@
-import { daytona } from "../index";
+import { getSandboxInstance } from "../index";
 import { resolvePath } from "./resolvePath";
 
 /** Reads UTF-8 text content from a source code or text file in line ranges (defaults to lines 1-200). Deep Agent friendly. */
@@ -21,7 +21,7 @@ export async function readFileText({
       eLine = sLine + 200;
     }
 
-    const sandbox = await daytona.get(sandBoxId);
+    const sandbox = await getSandboxInstance(sandBoxId);
     const buffer = await sandbox.fs.downloadFile(resolvePath(path));
     const text = buffer.toString("utf-8");
     const lines = text.split(/\r?\n/);

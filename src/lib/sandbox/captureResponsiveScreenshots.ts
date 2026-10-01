@@ -1,4 +1,4 @@
-import { daytona } from "./index";
+import { getSandboxInstance } from "./index";
 import { uploadFiles } from "@/lib/objectStorage";
 
 const VIEWPORTS = [
@@ -31,7 +31,7 @@ export async function captureResponsiveScreenshots({
     throw new Error(`Invalid screenshot target URL: ${url}`);
   }
 
-  const sandbox = await daytona.get(sandBoxId);
+  const sandbox = await getSandboxInstance(sandBoxId);
 
   const script = `
 import { chromium } from "playwright";

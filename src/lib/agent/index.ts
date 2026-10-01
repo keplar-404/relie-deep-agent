@@ -1,27 +1,36 @@
+import path from "path";
 import { createDeepAgent, FilesystemBackend } from "deepagents";
-import { createCodeInterpreterMiddleware } from "@langchain/quickjs";
+import { ChatOpenRouter } from "@langchain/openrouter";
 import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
+import { InMemoryStore } from "@langchain/langgraph";
 import {
-  summarizationMiddleware,
-  contextEditingMiddleware,
-  ClearToolUsesEdit,
   todoListMiddleware,
+  modelRetryMiddleware,
+  toolRetryMiddleware,
   modelCallLimitMiddleware,
+  toolCallLimitMiddleware,
 } from "langchain";
 import { fsTools } from "./tools/fsOperations";
 import { assetExtractionTool } from "./tools/assetExtraction";
+import { imageGenerationTool } from "./tools/imageGenerationTool";
 import { sandboxcodeprescreenshottool } from "./tools/sandboxcodeprescreenshottool";
 import systemPromt from "./prompts/systemPromt";
 import { pgPool } from "@/lib/db/drizzle";
+import { env } from "@/lib/utils/env";
 
+// Restrict the host filesystem backend strictly to the skills directory.
+// virtualMode prevents any escape outside of this folder.
+const skillsDirectory = path.resolve(process.cwd(), "src/lib/agent/skills");
 const backend = new FilesystemBackend({
-  rootDir: process.cwd(),
+  rootDir: skillsDirectory,
   virtualMode: true,
 });
 
+// Shared in-memory store for agent cross-tool state
+const store = new InMemoryStore();
+
 // PostgresSaver uses the Neon pool and writes checkpoints to Neon DB.
 // thread_id = projectId — each project has its own isolated graph state.
-// Docs: https://docs.langchain.com/oss/javascript/langgraph/checkpointers
 export const checkpointer = new PostgresSaver(pgPool);
 
 let _setupDone = false;
@@ -31,44 +40,52 @@ export async function ensureCheckpointerReady() {
   _setupDone = true;
 }
 
-export const createAgent = (model = "openrouter:minimax/minimax-m2.7") =>
-  createDeepAgent({
-    model,
+export const createAgent = (modelName = "openai/gpt-4o-mini") => {
+  // Normalize model identifier for ChatOpenRouter
+  const cleanModel = modelName.replace(/^openrouter:/, "");
+  const chatModel = new ChatOpenRouter({
+    apiKey: env.OPENROUTER_API_KEY,
+    model: cleanModel,
+    temperature: 0.7,
+  });
+
+  return createDeepAgent({
+    name: "relie-deep-agent",
+    model: chatModel,
     systemPrompt: systemPromt,
     checkpointer,
+    store,
+    // Strictly deny all write operations on the backend — agent only has read-only access to skills
     permissions: [
       {
         operations: ["write"],
-        paths: ["/src/lib/agent/skills/**"],
+        paths: ["/**"],
         mode: "deny",
       },
     ],
     backend,
-    skills: ["/src/lib/agent/skills/"],
+    skills: ["/"],
     middleware: [
-      createCodeInterpreterMiddleware(),
-      modelCallLimitMiddleware({
-        runLimit: 20,
-        exitBehavior: "end",
-      }),
-      contextEditingMiddleware({
-        edits: [
-          new ClearToolUsesEdit({
-            trigger: { tokens: 40_000 },
-            keep: { messages: 3 },
-            clearToolInputs: false,
-            placeholder: "[cleared]",
-          }),
-        ],
-      }),
       todoListMiddleware(),
-      summarizationMiddleware({
-        model: "openrouter:minimax/minimax-m2.7",
-        trigger: { tokens: 80_000 },
-        keep: { messages: 20 },
+      modelRetryMiddleware({
+        maxRetries: 3,
+        backoffFactor: 2.0,
+        initialDelayMs: 1000,
       }),
+      toolRetryMiddleware({
+        maxRetries: 2,
+        tools: ["extract_assets", "image_generation"],
+      }),
+      modelCallLimitMiddleware({ runLimit: 50 }),
+      toolCallLimitMiddleware({ runLimit: 150 }),
     ],
-    tools: [...fsTools, assetExtractionTool, sandboxcodeprescreenshottool],
+    tools: [
+      ...fsTools,
+      assetExtractionTool,
+      imageGenerationTool,
+      sandboxcodeprescreenshottool,
+    ],
   });
+};
 
 export const agent = createAgent();

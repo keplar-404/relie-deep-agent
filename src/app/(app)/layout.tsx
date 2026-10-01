@@ -1,6 +1,7 @@
 import "server-only";
 import { currentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { Agentation } from "agentation";
 
 /**
  * Protected app layout — wraps every route under (app)/
@@ -17,6 +18,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen bg-background text-foreground">
       {children}
+       {process.env.NODE_ENV === "development" && <Agentation />}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { daytona } from "../index";
+import { getSandboxInstance } from "../index";
 
 /** Runs TypeScript type checking ('npx tsc --noEmit') inside the Daytona sandbox. */
 export async function runTypecheck({
@@ -9,7 +9,7 @@ export async function runTypecheck({
   cwd?: string;
 }) {
   try {
-    const sandbox = await daytona.get(sandBoxId);
+    const sandbox = await getSandboxInstance(sandBoxId);
     return await sandbox.process.executeCommand("npx tsc --noEmit", cwd);
   } catch (error) {
     console.error("[fsOperations: runTypecheck] Error:", error);

@@ -9,6 +9,7 @@ import {
   buildUserAttachments,
   buildAssistantAttachments,
   buildLlmExecutions,
+  extractGeneratedImages,
 } from "./helpers";
 
 const bodySchema = z.object({
@@ -30,6 +31,7 @@ const bodySchema = z.object({
     .max(20, "Maximum of 20 file attachments allowed")
     .optional()
     .default([]),
+  model: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -85,7 +87,8 @@ export async function POST(req: NextRequest) {
       result.workflow === "ship" ? result.finalResponse : result.response;
     const screenshots = result.workflow === "ship" ? result.screenshots : [];
 
-    const assistantAttachments = buildAssistantAttachments(screenshots);
+    const generatedImages = extractGeneratedImages(responseText);
+    const assistantAttachments = buildAssistantAttachments(screenshots, generatedImages);
     const assistantMsg = await createChatMessage({
       projectId,
       userId: user.id,
@@ -104,6 +107,7 @@ export async function POST(req: NextRequest) {
       tools: result.tools,
       response: responseText,
       screenshots,
+      generatedImages,
       ...(result.workflow === "ship"
         ? {
             success: result.success,

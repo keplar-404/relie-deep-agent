@@ -25,7 +25,15 @@ export async function POST(req: NextRequest) {
   }
 
   // 2. Parse and validate JSON request body
-  const body = await req.json();
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json(
+      { error: "Malformed or empty JSON body" },
+      { status: 400 },
+    );
+  }
   if (!body || typeof body !== "object") {
     return Response.json(
       { error: "Malformed or empty JSON body" },

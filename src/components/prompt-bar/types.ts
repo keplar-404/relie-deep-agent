@@ -55,9 +55,11 @@ export const COMMANDS: Command[] = [
 ];
 
 export const MODELS: Model[] = [
-  { key: "claude-3-7-sonnet", name: "Claude 3.7 Sonnet", tag: "Flagship" },
-  { key: "claude-3-5-sonnet", name: "Claude 3.5 Sonnet", tag: "Fast" },
-  { key: "gpt-4o", name: "GPT-4o", tag: "General" },
+  { key: "auto", name: "Auto Route", tag: "Agent Router" },
+  { key: "openrouter:anthropic/claude-3.7-sonnet", name: "Claude 3.7 Sonnet", tag: "Flagship" },
+  { key: "openrouter:google/gemini-2.0-flash-001", name: "Gemini 2.0 Flash", tag: "Fast" },
+  { key: "openrouter:openai/gpt-4o-mini", name: "GPT-4o Mini", tag: "Standard" },
+  { key: "openrouter:minimax/minimax-m2.7", name: "Minimax M2.7", tag: "Coding" },
 ];
 
 export type PromptBarProps = {

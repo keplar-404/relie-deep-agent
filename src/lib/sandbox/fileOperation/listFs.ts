@@ -1,4 +1,4 @@
-import { daytona } from "../index";
+import { getSandboxInstance } from "../index";
 import { resolvePath } from "./resolvePath";
 
 /** Lists top-level files and subdirectories at a path in the sandbox workspace. */
@@ -10,7 +10,7 @@ export async function listFs({
   sandBoxId: string;
 }) {
   try {
-    const sandbox = await daytona.get(sandBoxId);
+    const sandbox = await getSandboxInstance(sandBoxId);
     const fileList = await sandbox.fs.listFiles(resolvePath(path), { depth: 1 });
     return fileList.map((file) => `${file.name}`).join("\n ");
   } catch (error) {

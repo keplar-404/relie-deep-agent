@@ -1,8 +1,21 @@
-import { Image, Daytona, DaytonaNotFoundError, DaytonaConflictError } from "@daytona/sdk";
+import { Image, Daytona, DaytonaNotFoundError, DaytonaConflictError, type Sandbox } from "@daytona/sdk";
 import { env } from "@/lib/utils/env";
 
 export const daytona = new Daytona({ apiKey: env.DAYTONA_API_KEY });
 const SNAPSHOT = "react-vite-bun-v3";
+
+const sandboxCache = new Map<string, { sandbox: Sandbox; expiresAt: number }>();
+
+/** Memoized Sandbox instance retriever: avoids spamming daytona.get() on every tool call */
+export async function getSandboxInstance(sandBoxId: string): Promise<Sandbox> {
+  const cached = sandboxCache.get(sandBoxId);
+  if (cached && Date.now() < cached.expiresAt) {
+    return cached.sandbox;
+  }
+  const sb = await daytona.get(sandBoxId);
+  sandboxCache.set(sandBoxId, { sandbox: sb, expiresAt: Date.now() + 5 * 60 * 1000 });
+  return sb;
+}
 
 function isSnapshotNotFoundError(error: unknown): boolean {
   if (error instanceof DaytonaNotFoundError) {

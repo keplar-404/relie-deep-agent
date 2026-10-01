@@ -32,11 +32,23 @@ export default function WorkspacePage({
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.project) {
-          setProject(data.project);
+          setProject((prev) => (prev ? { ...prev, ...data.project } : data.project));
         }
       })
       .catch((err) => {
         console.error("Failed to fetch project:", err);
+      });
+
+    // Fetch Daytona preview URL on-demand
+    fetch(`/api/v1/project/preview?projectId=${projectId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.previewUrl) {
+          setProject((prev) => (prev ? { ...prev, daytonaPreviewUrl: data.previewUrl } : null));
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch Daytona preview URL:", err);
       });
   }, [projectId]);
 
@@ -49,7 +61,7 @@ export default function WorkspacePage({
         maxSize="60%"
         className="flex flex-col h-full bg-background border-r border-border"
       >
-        <ProjectChatPanel projectName={project?.name} />
+        <ProjectChatPanel projectName={project?.name} projectId={projectId} />
       </ResizablePanel>
 
       <ResizableHandle withHandle className="after:w-4" />
