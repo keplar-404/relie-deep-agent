@@ -24,7 +24,10 @@ export async function GET(req: NextRequest) {
 
   const project = await getProject(projectId, user.id);
   if (!project) {
-    return Response.json({ error: "Project not found or unauthorized" }, { status: 404 });
+    return Response.json(
+      { error: "Project not found or unauthorized" },
+      { status: 404 },
+    );
   }
 
   if (!project.sandboxId) {
@@ -41,9 +44,14 @@ export async function GET(req: NextRequest) {
       }
     }
     const preview = await sb.getSignedPreviewUrl(3000, 3600);
+
+    console.log(preview.url);
     return Response.json({ previewUrl: preview.url }, { status: 200 });
   } catch (error) {
     console.error("[preview route error]:", error);
-    return Response.json({ previewUrl: null, error: "Failed to get preview URL" }, { status: 200 });
+    return Response.json(
+      { previewUrl: null, error: "Failed to get preview URL" },
+      { status: 200 },
+    );
   }
 }

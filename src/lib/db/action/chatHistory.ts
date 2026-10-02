@@ -1,29 +1,34 @@
 import { and, eq, asc } from "drizzle-orm";
 import { db } from "../drizzle";
-import { chatHistory } from "../schema/chatHistory";
-import { llmExecutions } from "../schema/llmExecution";
+import chatHistorySchema from "../schema/chatHistorySchema";
+import toolCallHistorySchema from "../schema/toolCallHistorySchema";
 import { createChatHistorySchema, type CreateChatHistory } from "../validators";
 
 export async function createChatMessage(input: CreateChatHistory) {
   const data = createChatHistorySchema.parse(input);
-  const [row] = await db.insert(chatHistory).values(data).returning();
+  const [row] = await db.insert(chatHistorySchema).values(data).returning();
   return row;
 }
 
 export async function getChatMessages(projectId: string, userId: string) {
   const messages = await db
     .select()
-    .from(chatHistory)
-    .where(and(eq(chatHistory.projectId, projectId), eq(chatHistory.userId, userId)))
-    .orderBy(asc(chatHistory.createdAt));
+    .from(chatHistorySchema)
+    .where(
+      and(
+        eq(chatHistorySchema.projectId, projectId),
+        eq(chatHistorySchema.userId, userId),
+      ),
+    )
+    .orderBy(asc(chatHistorySchema.createdAt));
 
   if (!messages.length) return [];
 
   const executions = await db
     .select()
-    .from(llmExecutions)
-    .where(eq(llmExecutions.projectId, projectId))
-    .orderBy(asc(llmExecutions.sequence));
+    .from(toolCallHistorySchema)
+    .where(eq(toolCallHistorySchema.projectId, projectId))
+    .orderBy(asc(toolCallHistorySchema.sequence));
 
   const executionsByChatId = new Map<string, typeof executions>();
   for (const exec of executions) {
@@ -49,4 +54,3 @@ export async function getChatMessages(projectId: string, userId: string) {
     };
   });
 }
-

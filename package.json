@@ -15,6 +15,7 @@
     "db:drop": "bun ./scripts/drop-tables.js"
   },
   "dependencies": {
+    "@ai-sdk/react": "^4.0.129",
     "@aws-sdk/client-s3": "^3.1139.0",
     "@base-ui/react": "^1.8.0",
     "@clerk/nextjs": "^7.9.4",

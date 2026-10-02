@@ -1,4 +1,10 @@
-import { Image, Daytona, DaytonaNotFoundError, DaytonaConflictError, type Sandbox } from "@daytona/sdk";
+import {
+  Image,
+  Daytona,
+  DaytonaNotFoundError,
+  DaytonaConflictError,
+  type Sandbox,
+} from "@daytona/sdk";
 import { env } from "@/lib/utils/env";
 
 export const daytona = new Daytona({ apiKey: env.DAYTONA_API_KEY });
@@ -6,14 +12,16 @@ const SNAPSHOT = "react-vite-bun-v3";
 
 const sandboxCache = new Map<string, { sandbox: Sandbox; expiresAt: number }>();
 
-/** Memoized Sandbox instance retriever: avoids spamming daytona.get() on every tool call */
 export async function getSandboxInstance(sandBoxId: string): Promise<Sandbox> {
   const cached = sandboxCache.get(sandBoxId);
   if (cached && Date.now() < cached.expiresAt) {
     return cached.sandbox;
   }
   const sb = await daytona.get(sandBoxId);
-  sandboxCache.set(sandBoxId, { sandbox: sb, expiresAt: Date.now() + 5 * 60 * 1000 });
+  sandboxCache.set(sandBoxId, {
+    sandbox: sb,
+    expiresAt: Date.now() + 5 * 60 * 1000,
+  });
   return sb;
 }
 
@@ -22,7 +30,11 @@ function isSnapshotNotFoundError(error: unknown): boolean {
     return true;
   }
   if (typeof error === "object" && error !== null) {
-    const err = error as { statusCode?: number; status?: number; message?: string };
+    const err = error as {
+      statusCode?: number;
+      status?: number;
+      message?: string;
+    };
     if (err.statusCode === 404 || err.status === 404) {
       return true;
     }
@@ -46,7 +58,7 @@ async function createSnapShot() {
         "bun add -g playwright",
         "bunx --bun playwright install --with-deps chromium",
         "git clone https://github.com/keplar-404/template-react-project.git /home/daytona/app",
-        "cd /home/daytona/app && bun install"
+        "cd /home/daytona/app && bun install",
       ),
       entrypoint: [
         "bun",
@@ -64,7 +76,10 @@ async function createSnapShot() {
   } catch (e: unknown) {
     if (
       e instanceof DaytonaConflictError ||
-      (typeof e === "object" && e !== null && "statusCode" in e && (e as { statusCode: number }).statusCode === 409)
+      (typeof e === "object" &&
+        e !== null &&
+        "statusCode" in e &&
+        (e as { statusCode: number }).statusCode === 409)
     ) {
       return; // ponytail: 409 = already exists, swallowed on purpose
     }
@@ -87,11 +102,12 @@ export default async function createSandBox() {
     return await sandBoxInit();
   } catch (error: unknown) {
     if (isSnapshotNotFoundError(error)) {
-      console.warn(`[createSandBox] Snapshot "${SNAPSHOT}" not found. Creating snapshot...`);
+      console.warn(
+        `[createSandBox] Snapshot "${SNAPSHOT}" not found. Creating snapshot...`,
+      );
       await createSnapShot();
       return await sandBoxInit();
     }
     throw error;
   }
 }
-

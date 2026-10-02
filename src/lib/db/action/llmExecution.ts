@@ -1,5 +1,5 @@
 import { db } from "../drizzle";
-import { llmExecutions } from "../schema/llmExecution";
+import toolCallHistorySchema from "../schema/toolCallHistorySchema";
 import {
   createLlmExecutionSchema,
   type CreateLlmExecution,
@@ -7,12 +7,12 @@ import {
 
 export async function createLlmExecution(input: CreateLlmExecution) {
   const data = createLlmExecutionSchema.parse(input);
-  const [row] = await db.insert(llmExecutions).values(data).returning();
+  const [row] = await db.insert(toolCallHistorySchema).values(data).returning();
   return row;
 }
 
 export async function createLlmExecutions(inputs: CreateLlmExecution[]) {
   if (!inputs.length) return [];
   const data = inputs.map((i) => createLlmExecutionSchema.parse(i));
-  return db.insert(llmExecutions).values(data).returning();
+  return db.insert(toolCallHistorySchema).values(data).returning();
 }

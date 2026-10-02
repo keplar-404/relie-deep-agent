@@ -1,7 +1,7 @@
 import { pgTable, uuid, varchar, text, timestamp } from "drizzle-orm/pg-core";
 import { users } from "./user";
 
-export const projects = pgTable("projects", {
+const projectSchema = pgTable("projects", {
   id: uuid().primaryKey().defaultRandom(),
   userId: uuid()
     .notNull()
@@ -14,3 +14,5 @@ export const projects = pgTable("projects", {
   createdAt: timestamp().notNull().defaultNow(),
   updatedAt: timestamp().notNull().defaultNow(),
 });
+
+export default projectSchema;

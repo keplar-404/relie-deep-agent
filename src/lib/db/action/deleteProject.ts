@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "../drizzle";
-import { projects } from "../schema/project";
+import projectSchema from "../schema/projectSchema";
 import { daytona } from "@/lib/sandbox";
 import { deleteProjectFiles } from "@/lib/objectStorage";
 import { checkpointer } from "@/lib/agent";
@@ -13,9 +13,11 @@ export async function deleteProject({
   userId: string;
 }) {
   const [project] = await db
-    .select({ sandboxId: projects.sandboxId })
-    .from(projects)
-    .where(and(eq(projects.id, projectId), eq(projects.userId, userId)))
+    .select({ sandboxId: projectSchema.sandboxId })
+    .from(projectSchema)
+    .where(
+      and(eq(projectSchema.id, projectId), eq(projectSchema.userId, userId)),
+    )
     .limit(1);
 
   if (!project) return false;
@@ -38,14 +40,24 @@ export async function deleteProject({
   }
 
   cleanupTasks.push(
-    deleteProjectFiles({ projectId, userId, sandboxId: project.sandboxId }).catch((err) => {
-      console.error("[deleteProject] Failed to delete S3 files:", err?.message || err);
+    deleteProjectFiles({
+      projectId,
+      userId,
+      sandboxId: project.sandboxId,
+    }).catch((err) => {
+      console.error(
+        "[deleteProject] Failed to delete S3 files:",
+        err?.message || err,
+      );
     }),
   );
 
   cleanupTasks.push(
     checkpointer.deleteThread(projectId).catch((err) => {
-      console.error("[deleteProject] Failed to delete checkpointer thread:", err?.message || err);
+      console.error(
+        "[deleteProject] Failed to delete checkpointer thread:",
+        err?.message || err,
+      );
     }),
   );
 
@@ -53,8 +65,10 @@ export async function deleteProject({
 
   // Postgres DB project row (cascades chat_history & llm_executions via schema FK)
   await db
-    .delete(projects)
-    .where(and(eq(projects.id, projectId), eq(projects.userId, userId)));
+    .delete(projectSchema)
+    .where(
+      and(eq(projectSchema.id, projectId), eq(projectSchema.userId, userId)),
+    );
 
   return true;
 }

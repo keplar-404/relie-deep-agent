@@ -1,6 +1,6 @@
 import { and, eq, desc } from "drizzle-orm";
 import { db } from "../drizzle";
-import { projects } from "../schema/project";
+import projectSchema from "../schema/projectSchema";
 import {
   createProjectSchema,
   updateProjectSchema,
@@ -10,15 +10,17 @@ import {
 
 export async function createProject(input: CreateProject) {
   const data = createProjectSchema.parse(input);
-  const [row] = await db.insert(projects).values(data).returning();
+  const [row] = await db.insert(projectSchema).values(data).returning();
   return row;
 }
 
 export async function getProject(projectId: string, userId: string) {
   const [row] = await db
     .select()
-    .from(projects)
-    .where(and(eq(projects.id, projectId), eq(projects.userId, userId)))
+    .from(projectSchema)
+    .where(
+      and(eq(projectSchema.id, projectId), eq(projectSchema.userId, userId)),
+    )
     .limit(1);
   return row ?? null;
 }
@@ -26,9 +28,9 @@ export async function getProject(projectId: string, userId: string) {
 export async function listProjects(userId: string) {
   return await db
     .select()
-    .from(projects)
-    .where(eq(projects.userId, userId))
-    .orderBy(desc(projects.updatedAt), desc(projects.createdAt));
+    .from(projectSchema)
+    .where(eq(projectSchema.userId, userId))
+    .orderBy(desc(projectSchema.updatedAt), desc(projectSchema.createdAt));
 }
 
 export async function updateProject(input: UpdateProject) {
@@ -36,13 +38,13 @@ export async function updateProject(input: UpdateProject) {
   const { id, userId, ...values } = data;
 
   const [row] = await db
-    .update(projects)
+    .update(projectSchema)
     .set({
       ...values,
       updatedAt: new Date(),
     })
-    .where(and(eq(projects.id, id), eq(projects.userId, userId)))
+    .where(and(eq(projectSchema.id, id), eq(projectSchema.userId, userId)))
     .returning();
 
   return row ?? null;
-}
+}
